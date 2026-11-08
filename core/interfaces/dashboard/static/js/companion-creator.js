@@ -115,6 +115,9 @@ const CompanionCreator = (() => {
           <button class="cc-ptab cc-ptab-active" id="cc-ptab-chat">
             <i class="fas fa-comment-dots"></i> Chat
           </button>
+          <button class="cc-ptab" id="cc-ptab-scratchpad">
+            <i class="fas fa-feather-pointed"></i> Scratchpad
+          </button>
           <button class="cc-ptab" id="cc-ptab-memory">
             <i class="fas fa-brain"></i> Memory
           </button>
@@ -694,6 +697,74 @@ const CompanionCreator = (() => {
 
       </div><!-- /.cc-settings-view -->
 
+      <!-- Scratchpad view (shown when Scratchpad tab is active) -->
+      <div class="cc-scratchpad-view hidden" id="cc-scratchpad-view">
+        <div class="cc-spad-container">
+          <!-- Scratchpad Header / Toolbar -->
+          <div class="cc-spad-toolbar">
+            <div class="cc-spad-header-info">
+              <div class="cc-spad-title">
+                <i class="fas fa-feather-pointed" style="color:var(--accent,#6366f1)"></i>
+                <span>Shared Scratchpad</span>
+                <span class="cc-spad-partner" id="cc-spad-partner">with Companion</span>
+              </div>
+              <div class="cc-spad-status" id="cc-spad-status">
+                <i class="fas fa-circle-check" style="color:#10b981;"></i>
+                <span id="cc-spad-status-text">Ready</span>
+              </div>
+            </div>
+            <div class="cc-spad-tools">
+              <div class="cc-spad-view-mode-group">
+                <button type="button" class="cc-spad-mode-btn cc-spad-mode-active" data-mode="split" id="cc-spad-mode-split" title="Side-by-side Editor & Preview">
+                  <i class="fas fa-columns"></i> Split
+                </button>
+                <button type="button" class="cc-spad-mode-btn" data-mode="edit" id="cc-spad-mode-edit" title="Markdown Editor Only">
+                  <i class="fas fa-code"></i> Edit
+                </button>
+                <button type="button" class="cc-spad-mode-btn" data-mode="preview" id="cc-spad-mode-preview" title="Rendered Preview Only">
+                  <i class="fas fa-eye"></i> Preview
+                </button>
+              </div>
+              <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs" id="cc-spad-template-btn" title="Reset to co-working template">
+                <i class="fas fa-wand-magic-sparkles"></i> Template
+              </button>
+              <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs" id="cc-spad-copy-btn" title="Copy markdown to clipboard">
+                <i class="fas fa-copy"></i> Copy
+              </button>
+              <button type="button" class="cc-btn cc-btn-primary cc-btn-xs" id="cc-spad-save-btn" title="Save changes (Ctrl+S)">
+                <i class="fas fa-floppy-disk"></i> Save
+              </button>
+            </div>
+          </div>
+
+          <!-- Scratchpad Body (Split view by default) -->
+          <div class="cc-spad-body cc-spad-layout-split" id="cc-spad-body">
+            <!-- Left: Text Editor -->
+            <div class="cc-spad-editor-pane" id="cc-spad-editor-pane">
+              <textarea id="cc-spad-textarea" class="cc-spad-textarea" placeholder="Start typing ideas, mechanics, and plans with your companion..." spellcheck="false"></textarea>
+            </div>
+            <!-- Right: Rendered Live Preview -->
+            <div class="cc-spad-preview-pane" id="cc-spad-preview-pane">
+              <div class="cc-spad-preview-content cc-msg-md" id="cc-spad-preview-content"></div>
+            </div>
+          </div>
+
+          <!-- Quick Idea Bar (Bottom) -->
+          <div class="cc-spad-quick-bar">
+            <div class="cc-spad-quick-input-wrap">
+              <i class="fas fa-lightbulb cc-spad-quick-icon"></i>
+              <input type="text" id="cc-spad-quick-input" placeholder="Type a quick idea, mechanic, or task and press Enter..." autocomplete="off">
+            </div>
+            <select id="cc-spad-section-select" class="cc-spad-section-select">
+              <option value="">💡 Auto / Default Section</option>
+            </select>
+            <button type="button" id="cc-spad-quick-add-btn" class="cc-btn cc-btn-primary cc-btn-xs">
+              <i class="fas fa-plus"></i> Add Note
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Memory view (shown when Memory tab is active) -->
       <div class="cc-memory-view hidden" id="cc-memory-view">
         <div class="cc-mem-scroll" id="cc-mem-scroll">
@@ -1255,24 +1326,32 @@ const CompanionCreator = (() => {
     }
 
     function _switchView(view) {
-        const chatView     = document.getElementById('cc-chat-view');
-        const settingsView = document.getElementById('cc-settings-view');
-        const memoryView   = document.getElementById('cc-memory-view');
-        const chatTab      = document.getElementById('cc-ptab-chat');
-        const settingsTab  = document.getElementById('cc-ptab-settings');
-        const memoryTab    = document.getElementById('cc-ptab-memory');
+        const chatView       = document.getElementById('cc-chat-view');
+        const settingsView   = document.getElementById('cc-settings-view');
+        const memoryView     = document.getElementById('cc-memory-view');
+        const scratchpadView = document.getElementById('cc-scratchpad-view');
+        const chatTab        = document.getElementById('cc-ptab-chat');
+        const scratchpadTab  = document.getElementById('cc-ptab-scratchpad');
+        const settingsTab    = document.getElementById('cc-ptab-settings');
+        const memoryTab      = document.getElementById('cc-ptab-memory');
 
         // Hide all views, deactivate all tabs
         chatView?.classList.add('hidden');
         settingsView?.classList.add('hidden');
         memoryView?.classList.add('hidden');
+        scratchpadView?.classList.add('hidden');
         chatTab?.classList.remove('cc-ptab-active');
+        scratchpadTab?.classList.remove('cc-ptab-active');
         settingsTab?.classList.remove('cc-ptab-active');
         memoryTab?.classList.remove('cc-ptab-active');
 
         if (view === 'chat') {
             chatView?.classList.remove('hidden');
             chatTab?.classList.add('cc-ptab-active');
+        } else if (view === 'scratchpad') {
+            scratchpadView?.classList.remove('hidden');
+            scratchpadTab?.classList.add('cc-ptab-active');
+            if (_editingId) _loadScratchpad(_editingId);
         } else if (view === 'memory') {
             memoryView?.classList.remove('hidden');
             memoryTab?.classList.add('cc-ptab-active');
@@ -1310,6 +1389,335 @@ const CompanionCreator = (() => {
         } else {
             applySelect();
         }
+    }
+
+    // ==========================================
+    // Shared Brainstorming Scratchpad
+    // ==========================================
+    let _spadDebounceTimer = null;
+    let _spadCurrentCompanionId = null;
+    let _spadLastSavedContent = '';
+    let _spadViewMode = 'split'; // 'split' | 'edit' | 'preview'
+    let _spadListenersInitialized = false;
+
+    async function _loadScratchpad(companionId) {
+        _spadCurrentCompanionId = companionId;
+        const partnerEl = document.getElementById('cc-spad-partner');
+        if (partnerEl) {
+            partnerEl.textContent = `with ${_activeData?.name || 'Companion'}`;
+        }
+        _updateScratchpadStatus('Loading…', 'loading');
+
+        try {
+            const res = await fetch(`${CHAT_API}/${companionId}/scratchpad`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const content = data.content || '';
+            _spadLastSavedContent = content;
+
+            const textarea = document.getElementById('cc-spad-textarea');
+            if (textarea) {
+                textarea.value = content;
+            }
+
+            _renderScratchpadPreview(content);
+            _populateScratchpadSections(data.sections || []);
+            _updateScratchpadStatus(data.last_modified ? `Saved ${new Date(data.last_modified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Ready', 'saved');
+        } catch (e) {
+            console.error('[Scratchpad] Failed to load:', e);
+            _updateScratchpadStatus('Load failed', 'error');
+        }
+    }
+
+    function _renderScratchpadPreview(markdownText) {
+        const previewEl = document.getElementById('cc-spad-preview-content');
+        if (!previewEl) return;
+        const text = (markdownText !== undefined) ? markdownText : (document.getElementById('cc-spad-textarea')?.value || '');
+        if (!text.trim()) {
+            previewEl.innerHTML = '<div class="cc-spad-empty"><i class="fas fa-feather-pointed"></i> Scratchpad is empty. Start typing to brainstorm together!</div>';
+            return;
+        }
+
+        let html = '';
+        if (typeof marked !== 'undefined' && marked.parse) {
+            try {
+                html = marked.parse(text);
+            } catch (err) {
+                html = _escHtml(text);
+            }
+        } else {
+            html = _escHtml(text);
+        }
+
+        // Render any YouTube/Spotify cards if links are in the scratchpad notes!
+        if (typeof window.__renderAethvionYoutubeCards === 'function') {
+            html += window.__renderAethvionYoutubeCards(text);
+        }
+
+        previewEl.innerHTML = html;
+
+        // Apply interactive checkbox toggling: clicking [ ] or [x] updates the markdown!
+        previewEl.querySelectorAll('input[type="checkbox"]').forEach((chk, idx) => {
+            chk.disabled = false;
+            chk.style.cursor = 'pointer';
+            chk.addEventListener('change', () => {
+                _toggleCheckboxInScratchpad(idx, chk.checked);
+            });
+        });
+
+        // Run syntax highlighting on code blocks
+        if (typeof hljs !== 'undefined') {
+            previewEl.querySelectorAll('pre code').forEach(block => {
+                try { hljs.highlightElement(block); } catch {}
+            });
+        }
+    }
+
+    function _toggleCheckboxInScratchpad(checkboxIndex, isChecked) {
+        const textarea = document.getElementById('cc-spad-textarea');
+        if (!textarea) return;
+        let content = textarea.value;
+        let currentIdx = 0;
+        const taskRegex = /^(\s*[-*+]\s+\[)([ xX])(\]\s+.*)$/gm;
+        let newContent = content.replace(taskRegex, (match, prefix, checkState, suffix) => {
+            if (currentIdx === checkboxIndex) {
+                currentIdx++;
+                return `${prefix}${isChecked ? 'x' : ' '}${suffix}`;
+            }
+            currentIdx++;
+            return match;
+        });
+
+        textarea.value = newContent;
+        _renderScratchpadPreview(newContent);
+        _triggerScratchpadAutoSave();
+    }
+
+    function _populateScratchpadSections(sections) {
+        const select = document.getElementById('cc-spad-section-select');
+        if (!select) return;
+        const prevVal = select.value;
+        select.innerHTML = '<option value="">💡 Auto / Default Section</option>';
+        if (Array.isArray(sections)) {
+            sections.forEach(sec => {
+                const opt = document.createElement('option');
+                opt.value = sec;
+                opt.textContent = sec;
+                select.appendChild(opt);
+            });
+        }
+        if (prevVal && select.querySelector(`option[value="${_esc(prevVal)}"]`)) {
+            select.value = prevVal;
+        }
+    }
+
+    function _updateScratchpadStatus(text, state = 'saved') {
+        const statusEl = document.getElementById('cc-spad-status');
+        const textEl = document.getElementById('cc-spad-status-text');
+        if (!statusEl || !textEl) return;
+        textEl.textContent = text;
+        const icon = statusEl.querySelector('i');
+        if (icon) {
+            icon.className = '';
+            if (state === 'saved') {
+                icon.className = 'fas fa-circle-check';
+                icon.style.color = '#10b981';
+            } else if (state === 'saving' || state === 'loading') {
+                icon.className = 'fas fa-spinner fa-spin';
+                icon.style.color = '#818cf8';
+            } else if (state === 'unsaved') {
+                icon.className = 'fas fa-circle-dot';
+                icon.style.color = '#f59e0b';
+            } else {
+                icon.className = 'fas fa-triangle-exclamation';
+                icon.style.color = '#f43f5e';
+            }
+        }
+    }
+
+    async function _saveScratchpad(silent = false) {
+        const cId = _spadCurrentCompanionId || _editingId;
+        if (!cId) return;
+        const textarea = document.getElementById('cc-spad-textarea');
+        if (!textarea) return;
+        const content = textarea.value;
+
+        if (_spadDebounceTimer) {
+            clearTimeout(_spadDebounceTimer);
+            _spadDebounceTimer = null;
+        }
+
+        _updateScratchpadStatus('Saving…', 'saving');
+        try {
+            const res = await fetch(`${CHAT_API}/${cId}/scratchpad`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _spadLastSavedContent = content;
+            _populateScratchpadSections(data.sections || []);
+            _updateScratchpadStatus(`Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 'saved');
+            if (!silent && typeof showToast === 'function') {
+                showToast('Scratchpad saved', 'success');
+            }
+        } catch (e) {
+            console.error('[Scratchpad] Save failed:', e);
+            _updateScratchpadStatus('Save failed', 'error');
+            if (!silent && typeof showToast === 'function') {
+                showToast(`Failed to save scratchpad: ${e.message}`, 'error');
+            }
+        }
+    }
+
+    function _triggerScratchpadAutoSave() {
+        _updateScratchpadStatus('Unsaved changes', 'unsaved');
+        if (_spadDebounceTimer) clearTimeout(_spadDebounceTimer);
+        _spadDebounceTimer = setTimeout(() => {
+            _saveScratchpad(true);
+        }, 1200);
+    }
+
+    async function _appendScratchpadNote(text, section = '') {
+        const cId = _spadCurrentCompanionId || _editingId;
+        if (!cId || !text.trim()) return;
+        _updateScratchpadStatus('Adding…', 'saving');
+        try {
+            const res = await fetch(`${CHAT_API}/${cId}/scratchpad/append`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text.trim(), section: section || undefined })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const textarea = document.getElementById('cc-spad-textarea');
+            if (textarea && data.content) {
+                textarea.value = data.content;
+                _spadLastSavedContent = data.content;
+                _renderScratchpadPreview(data.content);
+                _populateScratchpadSections(data.sections || []);
+            }
+            _updateScratchpadStatus(`Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 'saved');
+            if (typeof showToast === 'function') {
+                showToast(data.message || 'Note added to scratchpad', 'success');
+            }
+        } catch (e) {
+            console.error('[Scratchpad] Append note failed:', e);
+            _updateScratchpadStatus('Failed to add note', 'error');
+            if (typeof showToast === 'function') {
+                showToast(`Could not add note: ${e.message}`, 'error');
+            }
+        }
+    }
+
+    function _setScratchpadViewMode(mode) {
+        _spadViewMode = mode;
+        const bodyEl = document.getElementById('cc-spad-body');
+        if (!bodyEl) return;
+        bodyEl.classList.remove('cc-spad-layout-split', 'cc-spad-layout-edit', 'cc-spad-layout-preview');
+        bodyEl.classList.add(`cc-spad-layout-${mode}`);
+
+        document.querySelectorAll('.cc-spad-mode-btn').forEach(b => {
+            b.classList.toggle('cc-spad-mode-active', b.dataset.mode === mode);
+        });
+
+        if (mode !== 'edit') {
+            _renderScratchpadPreview();
+        }
+    }
+
+    function _initScratchpadListeners() {
+        if (_spadListenersInitialized) return;
+        _spadListenersInitialized = true;
+
+        const textarea = document.getElementById('cc-spad-textarea');
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                _renderScratchpadPreview(textarea.value);
+                _triggerScratchpadAutoSave();
+            });
+
+            // Support Tab indentation and Ctrl+S shortcut
+            textarea.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    _saveScratchpad(false);
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 2;
+                    _renderScratchpadPreview(textarea.value);
+                    _triggerScratchpadAutoSave();
+                }
+            });
+        }
+
+        // View mode switchers (Split / Edit / Preview)
+        document.getElementById('cc-spad-mode-split')  ?.addEventListener('click', () => _setScratchpadViewMode('split'));
+        document.getElementById('cc-spad-mode-edit')   ?.addEventListener('click', () => _setScratchpadViewMode('edit'));
+        document.getElementById('cc-spad-mode-preview')?.addEventListener('click', () => _setScratchpadViewMode('preview'));
+
+        // Save button
+        document.getElementById('cc-spad-save-btn')?.addEventListener('click', () => _saveScratchpad(false));
+
+        // Copy button
+        document.getElementById('cc-spad-copy-btn')?.addEventListener('click', () => {
+            const text = document.getElementById('cc-spad-textarea')?.value || '';
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    if (typeof showToast === 'function') showToast('Scratchpad copied to clipboard', 'info');
+                });
+            }
+        });
+
+        // Template button
+        document.getElementById('cc-spad-template-btn')?.addEventListener('click', async () => {
+            if (confirm('Reset scratchpad back to the standard co-working template? Any custom notes not saved elsewhere will be cleared.')) {
+                const cId = _spadCurrentCompanionId || _editingId;
+                if (!cId) return;
+                try {
+                    const res = await fetch(`${CHAT_API}/${cId}/scratchpad/clear`, { method: 'POST' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    const ta = document.getElementById('cc-spad-textarea');
+                    if (ta && data.content) {
+                        ta.value = data.content;
+                        _spadLastSavedContent = data.content;
+                        _renderScratchpadPreview(data.content);
+                        _populateScratchpadSections(data.sections || []);
+                    }
+                    _updateScratchpadStatus('Template loaded', 'saved');
+                    if (typeof showToast === 'function') showToast('Scratchpad reset to template', 'success');
+                } catch (err) {
+                    console.error('Template reset failed:', err);
+                }
+            }
+        });
+
+        // Quick note adder
+        const quickInput = document.getElementById('cc-spad-quick-input');
+        const quickAddBtn = document.getElementById('cc-spad-quick-add-btn');
+        const sectionSelect = document.getElementById('cc-spad-section-select');
+
+        const doAddQuick = () => {
+            if (!quickInput) return;
+            const val = quickInput.value.trim();
+            if (!val) return;
+            const sec = sectionSelect ? sectionSelect.value : '';
+            _appendScratchpadNote(val, sec);
+            quickInput.value = '';
+        };
+
+        quickInput?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doAddQuick();
+            }
+        });
+        quickAddBtn?.addEventListener('click', doAddQuick);
     }
 
     // Memory view
@@ -1717,6 +2125,7 @@ const CompanionCreator = (() => {
         if (quickPop) quickPop.classList.add('hidden');
 
         const memoryTab  = document.getElementById('cc-ptab-memory');
+        const spadTab    = document.getElementById('cc-ptab-scratchpad');
         if (isNew || !data) {
             if (avatarEl) { avatarEl.textContent = '✦'; avatarEl.style.background = 'rgba(99,102,241,0.15)'; avatarEl.style.color = '#818cf8'; }
             if (nameEl) nameEl.textContent = 'New Companion';
@@ -1724,6 +2133,7 @@ const CompanionCreator = (() => {
             if (profileBadge) profileBadge.classList.add('hidden');
             if (subEl)  subEl.textContent  = 'Pick a starter template or fill in the settings below to create';
             if (chatTab)   { chatTab.disabled   = true; chatTab.title   = 'Save the companion first to start chatting'; }
+            if (spadTab)   { spadTab.disabled   = true; spadTab.title   = 'Save the companion first to view scratchpad'; }
             if (memoryTab) { memoryTab.disabled = true; memoryTab.title = 'Save the companion first to view memory'; }
             if (portAvEl)   { portAvEl.textContent = '✦'; portAvEl.style.background = 'rgba(99,102,241,0.15)'; portAvEl.style.color = '#818cf8'; }
             if (portNameEl) portNameEl.textContent = '';
@@ -1732,6 +2142,7 @@ const CompanionCreator = (() => {
         }
 
         if (chatTab)   { chatTab.disabled   = false; chatTab.title   = ''; }
+        if (spadTab)   { spadTab.disabled   = false; spadTab.title   = ''; }
         if (memoryTab) { memoryTab.disabled = false; memoryTab.title = ''; }
         const color = data.accent_color || '#6366f1';
 
@@ -2913,6 +3324,13 @@ const CompanionCreator = (() => {
 
                         } else if (evt.type === 'tool_start') {
                             _setPortraitThinking(true, `Using ${evt.tool || 'tool'}…`);
+                            if (evt.tool === 'scratchpad') {
+                                const spadTab = document.getElementById('cc-ptab-scratchpad');
+                                if (spadTab) {
+                                    spadTab.classList.add('cc-ptab-pulse');
+                                    setTimeout(() => spadTab.classList.remove('cc-ptab-pulse'), 3000);
+                                }
+                            }
                             flushStreamRender();
                             const cleanedFirst = _stripToolTags(fullText);
                             if (currentBubbleText) {
@@ -2964,6 +3382,9 @@ const CompanionCreator = (() => {
                                     setTimeout(() => memTab.classList.remove('cc-ptab-pulse'), 2500);
                                 }
                                 if (typeof showToast === 'function') showToast(`${_activeData?.name || 'Companion'} remembered that`, 'info');
+                            }
+                            if (!document.getElementById('cc-scratchpad-view')?.classList.contains('hidden') && _editingId) {
+                                _loadScratchpad(_editingId);
                             }
                         }
                     } catch { /* non-JSON chunk */ }
@@ -3402,10 +3823,11 @@ const CompanionCreator = (() => {
             }
         });
 
-        // Chat / Memory / Settings tab buttons
-        document.getElementById('cc-ptab-chat')    ?.addEventListener('click', () => _switchView('chat'));
-        document.getElementById('cc-ptab-memory')  ?.addEventListener('click', () => _switchView('memory'));
-        document.getElementById('cc-ptab-settings')?.addEventListener('click', () => _switchView('settings'));
+        // Chat / Scratchpad / Memory / Settings tab buttons
+        document.getElementById('cc-ptab-chat')      ?.addEventListener('click', () => _switchView('chat'));
+        document.getElementById('cc-ptab-scratchpad')?.addEventListener('click', () => _switchView('scratchpad'));
+        document.getElementById('cc-ptab-memory')    ?.addEventListener('click', () => _switchView('memory'));
+        document.getElementById('cc-ptab-settings')  ?.addEventListener('click', () => _switchView('settings'));
 
         // Quick Model & Connector Profile switcher in header
         document.getElementById('cc-pane-model-badge')?.addEventListener('click', _toggleQuickSwitchPopover);
@@ -3494,6 +3916,7 @@ const CompanionCreator = (() => {
         document.getElementById('cc-checkin-btn')?.addEventListener('click', _triggerCheckin);
         document.getElementById('cc-export-chat-btn')?.addEventListener('click', _exportChatTranscript);
         document.getElementById('cc-clear-chat-btn')?.addEventListener('click', _clearChatHistoryOnly);
+        _initScratchpadListeners();
 
         // Live sync with Global Companion Presence floating popups & background check-ins
         window.addEventListener('companionProactiveMessage', e => {

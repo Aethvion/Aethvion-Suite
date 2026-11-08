@@ -89,8 +89,16 @@ def parse_attrs(attr_str: str) -> dict[str, str]:
 
 # Single-tool execution (sync, runs in thread)
 
-def _execute_one(tool_name: str, attrs: dict[str, str], workspaces: list[dict], profile_id: str | None = None) -> str:
+def _execute_one(
+    tool_name: str,
+    attrs: dict[str, str],
+    workspaces: list[dict],
+    profile_id: str | None = None,
+    companion_id: str | None = None,
+) -> str:
     """Execute a single tool call synchronously. Called via asyncio.to_thread."""
+    if companion_id and "companion_id" not in attrs:
+        attrs["companion_id"] = companion_id
     try:
         if tool_name == "read_file":
             path = attrs.get("path", "")
@@ -190,6 +198,7 @@ async def execute_tools_stream(
     content: str,
     workspaces: list[dict],
     profile_id: str | None = None,
+    companion_id: str | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """
     Parse all [tool:...] blocks from content and execute them.
@@ -211,7 +220,7 @@ async def execute_tools_stream(
         attrs = parse_attrs(parts[1] if len(parts) > 1 else "")
 
         yield {"type": "tool_start", "tool": tool_name, "args": attrs}
-        result = await asyncio.to_thread(_execute_one, tool_name, attrs, workspaces, profile_id)
+        result = await asyncio.to_thread(_execute_one, tool_name, attrs, workspaces, profile_id, companion_id)
         results.append(result)
         cleaned = cleaned.replace(raw, "")
 

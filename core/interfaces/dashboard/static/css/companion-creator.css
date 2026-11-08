@@ -2010,3 +2010,285 @@
     border-color: rgba(29, 185, 84, 0.5);
     color: #1db954;
 }
+
+/* ========================================================
+   Shared Brainstorming Scratchpad & Canvas
+   ======================================================== */
+.cc-scratchpad-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg-primary, #0c0d12);
+}
+.cc-scratchpad-view.hidden {
+    display: none !important;
+}
+.cc-spad-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+.cc-spad-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1.15rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(24, 24, 30, 0.65);
+    backdrop-filter: blur(8px);
+    gap: 1rem;
+    flex-shrink: 0;
+}
+.cc-spad-header-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.cc-spad-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary, #f4f4f5);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.cc-spad-partner {
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text-secondary, #a1a1aa);
+    padding-left: 0.25rem;
+}
+.cc-spad-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary, #a1a1aa);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+}
+.cc-spad-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.cc-spad-view-mode-group {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+    margin-right: 0.35rem;
+}
+.cc-spad-mode-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-secondary, #a1a1aa);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.22rem 0.55rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.cc-spad-mode-btn:hover {
+    color: var(--text-primary, #fff);
+}
+.cc-spad-mode-btn.cc-spad-mode-active {
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+    border-color: rgba(99, 102, 241, 0.35);
+}
+.cc-spad-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Split View */
+.cc-spad-layout-split .cc-spad-editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-right: 1px solid var(--border);
+    background: rgba(14, 15, 20, 0.5);
+}
+.cc-spad-layout-split .cc-spad-preview-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-y: auto;
+    background: rgba(18, 19, 26, 0.45);
+}
+
+/* Edit Only View */
+.cc-spad-layout-edit .cc-spad-editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.cc-spad-layout-edit .cc-spad-preview-pane {
+    display: none !important;
+}
+
+/* Preview Only View */
+.cc-spad-layout-preview .cc-spad-editor-pane {
+    display: none !important;
+}
+.cc-spad-layout-preview .cc-spad-preview-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow-y: auto;
+}
+
+.cc-spad-textarea {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 1.15rem 1.35rem;
+    color: var(--text-primary, #f4f4f5);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.885rem;
+    line-height: 1.68;
+    tab-size: 2;
+    overflow-y: auto;
+}
+.cc-spad-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+}
+.cc-spad-preview-pane {
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto;
+}
+.cc-spad-preview-content {
+    max-width: 780px;
+    margin: 0 auto;
+    color: var(--text-primary, #f4f4f5);
+}
+.cc-spad-preview-content h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.4rem;
+}
+.cc-spad-preview-content h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 1.4rem;
+    margin-bottom: 0.6rem;
+    color: #e4e4e7;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.cc-spad-preview-content h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.4rem;
+    color: #d4d4d8;
+}
+.cc-spad-preview-content ul,
+.cc-spad-preview-content ol {
+    padding-left: 1.3rem;
+    margin-bottom: 0.85rem;
+}
+.cc-spad-preview-content li {
+    margin-bottom: 0.35rem;
+    line-height: 1.55;
+}
+.cc-spad-preview-content input[type="checkbox"] {
+    accent-color: var(--accent, #6366f1);
+    transform: scale(1.15);
+    margin-right: 0.4rem;
+    cursor: pointer;
+}
+.cc-spad-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.65rem;
+    color: var(--text-secondary, #a1a1aa);
+    font-size: 0.86rem;
+    opacity: 0.65;
+    padding: 2rem;
+    text-align: center;
+}
+.cc-spad-quick-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 1.15rem;
+    border-top: 1px solid var(--border);
+    background: rgba(20, 20, 26, 0.75);
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+}
+.cc-spad-quick-input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.38rem 0.75rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cc-spad-quick-input-wrap:focus-within {
+    border-color: rgba(99, 102, 241, 0.55);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+.cc-spad-quick-input-wrap input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary, #fff);
+    font-size: 0.825rem;
+}
+.cc-spad-quick-input-wrap input::placeholder {
+    color: var(--text-secondary, #71717a);
+}
+.cc-spad-quick-icon {
+    color: #eab308;
+    font-size: 0.85rem;
+}
+.cc-spad-section-select {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary, #d4d4d8);
+    font-size: 0.78rem;
+    padding: 0.42rem 0.65rem;
+    outline: none;
+    max-width: 220px;
+    cursor: pointer;
+}
+.cc-spad-section-select:focus {
+    border-color: rgba(99, 102, 241, 0.55);
+}

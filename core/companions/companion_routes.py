@@ -17,6 +17,7 @@ from core.companions.registry import CompanionRegistry
 from core.companions.companion_engine import CompanionEngine
 from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
+from core.companions.engine.scratchpad import CompanionScratchpad
 from core.workspace.workspace_utils import load_workspaces, save_workspaces
 from core.bridges.bridge_manager import get_registry
 
@@ -28,6 +29,13 @@ _TEXT_EXTENSIONS = {
     ".ps1", ".bat", ".c", ".cpp", ".h", ".hpp", ".cs", ".rs", ".go", ".java",
     ".kt", ".rb", ".php", ".xml", ".log", ".env"
 }
+
+class ScratchpadSaveRequest(BaseModel):
+    content: str
+
+class ScratchpadAppendRequest(BaseModel):
+    text: str
+    section: Optional[str] = None
 
 class ChatMessage(BaseModel):
     role: str
@@ -185,6 +193,36 @@ async def synthesize_memory(companion_id: str):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{companion_id}/scratchpad")
+async def get_scratchpad(companion_id: str):
+    """Retrieve the shared brainstorming scratchpad for the companion."""
+    cfg = _get_cfg(companion_id)
+    sp = CompanionScratchpad(cfg.data_dir, cfg.name)
+    return sp.load()
+
+@router.post("/{companion_id}/scratchpad")
+async def save_scratchpad(companion_id: str, req: ScratchpadSaveRequest):
+    """Save/overwrite the shared brainstorming scratchpad."""
+    cfg = _get_cfg(companion_id)
+    sp = CompanionScratchpad(cfg.data_dir, cfg.name)
+    return sp.save(req.content)
+
+@router.post("/{companion_id}/scratchpad/append")
+async def append_scratchpad(companion_id: str, req: ScratchpadAppendRequest):
+    """Append a note or idea to the shared scratchpad."""
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="Note text cannot be empty.")
+    cfg = _get_cfg(companion_id)
+    sp = CompanionScratchpad(cfg.data_dir, cfg.name)
+    return sp.append_note(req.text, section=req.section)
+
+@router.post("/{companion_id}/scratchpad/clear")
+async def clear_scratchpad(companion_id: str):
+    """Reset the scratchpad back to the default co-working template."""
+    cfg = _get_cfg(companion_id)
+    sp = CompanionScratchpad(cfg.data_dir, cfg.name)
+    return sp.clear(reset_template=True)
 
 @router.post("/{companion_id}/history/clear")
 async def clear_history_only(companion_id: str):

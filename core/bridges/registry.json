@@ -194,6 +194,28 @@
             "settings": []
         },
         {
+            "id": "scratchpad",
+            "name": "Shared Brainstorming Scratchpad",
+            "description": "Collaborative canvas and scratchpad shared between you and the companion to jot down, organize, and track ideas, mechanics, and plans.",
+            "module_path": "core.bridges.scratchpad_bridge",
+            "category": "system",
+            "privacy_tier": "cloud_safe",
+            "icon": "fas fa-lightbulb",
+            "slash_command": "/scratchpad",
+            "default_command": "read",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "read": "Read the full shared scratchpad or a specific section. Optional arg: 'section'.",
+                "append": "Append an idea, mechanic, or task to the scratchpad. Args: 'text' (required), optional 'section' (e.g. 'Ideas', 'Mechanics', 'Notes').",
+                "write": "Overwrite scratchpad content. Args: 'content' (required).",
+                "list_sections": "List all markdown heading sections on the scratchpad.",
+                "clear": "Reset the scratchpad back to the default co-working template."
+            },
+            "settings": []
+        },
+        {
             "id": "web_search",
             "name": "Web Search",
             "description": "Search the internet and return a summary of top results (powered by DuckDuckGo, no API key required).",

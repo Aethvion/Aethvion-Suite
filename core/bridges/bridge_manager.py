@@ -29,6 +29,7 @@ DEFAULT_PROFILES = [
             "system_link",
             "webcam_capture",
             "companion_tasks",
+            "scratchpad",
             "web_search",
             "webpage_reader",
             "youtube_link",
@@ -46,6 +47,7 @@ DEFAULT_PROFILES = [
         "builtin": True,
         "allowed_connectors": [
             "companion_tasks",
+            "scratchpad",
             "web_search",
             "webpage_reader",
             "youtube_link",
@@ -67,6 +69,7 @@ DEFAULT_PROFILES = [
             "media_sentinel",
             "system_link",
             "companion_tasks",
+            "scratchpad",
             "weather_link"
         ]
     },

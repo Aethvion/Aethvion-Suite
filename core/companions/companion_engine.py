@@ -162,7 +162,7 @@ class CompanionEngine:
             workspaces = load_workspaces(config.id)
             round_results: list[str] = []
             cleaned_resp = content
-            async for tool_event in execute_tools_stream(content, workspaces, profile_id=connector_profile):
+            async for tool_event in execute_tools_stream(content, workspaces, profile_id=connector_profile, companion_id=config.id):
                 if tool_event["type"] == "final_cleaned":
                     cleaned_resp = tool_event["content"]
                     round_results = tool_event["results"]
@@ -273,7 +273,9 @@ class CompanionEngine:
                 if bi.get("quirks"):
                     parts.append(f"\n\nQuirks: {'; '.join(bi['quirks'])}")
                 if mem:
-                    parts.append(f"\n\nWhat you know about the user:\n{json.dumps(mem, indent=2)}")
+                    parts.append(
+                        f"\n\nWhat you know about the user (SILENT BACKGROUND CONTEXT — only reference location, city, or age if Marcel explicitly asks or if directly relevant; never awkwardly drop their city or age into casual conversation):\n{json.dumps(mem, indent=2)}"
+                    )
                 if bridges_block:
                     parts.append(f"\n\n{bridges_block}")
                 if workspace_block:
@@ -564,7 +566,7 @@ class CompanionEngine:
                     round_results: list[str] = []
                     cleaned_resp  = current_resp
 
-                    async for tool_event in execute_tools_stream(current_resp, workspaces, profile_id=connector_profile):
+                    async for tool_event in execute_tools_stream(current_resp, workspaces, profile_id=connector_profile, companion_id=config.id):
                         if tool_event["type"] == "tool_start":
                             yield json.dumps(tool_event) + "\n"
                         elif tool_event["type"] == "final_cleaned":
