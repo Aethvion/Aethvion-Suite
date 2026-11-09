@@ -39,7 +39,8 @@ DEFAULT_PROFILES = [
             "reddit",
             "weather_link",
             "spotify",
-            "group_chat"
+            "group_chat",
+            "dynamic_toolmaker"
         ]
     },
     {
@@ -59,7 +60,8 @@ DEFAULT_PROFILES = [
             "reddit",
             "weather_link",
             "spotify",
-            "group_chat"
+            "group_chat",
+            "dynamic_toolmaker"
         ]
     },
     {
@@ -234,6 +236,14 @@ def call_module(module_id: str, command: str = "", args: dict = None, profile_id
     module_info = next((m for m in registry.get("modules", []) if m["id"] == module_id), None)
 
     if not module_info:
+        # Check if this is a registered dynamic realtime incubator tool
+        try:
+            from core.bridges import dynamic_manager
+            dyn = dynamic_manager.get_dynamic_tool(module_id)
+            if dyn:
+                return dynamic_manager.execute_dynamic_tool(module_id, command, args, profile_id=profile_id)
+        except Exception as _de:
+            logger.debug(f"Dynamic tool check failed for '{module_id}': {_de}")
         return f"Bridge Error: Module '{module_id}' not found in registry."
 
     allowed, reason = is_module_allowed(module_id, profile_id)
@@ -327,6 +337,9 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
     if "/groupchat" in slash_map:
         slash_map["/gc"] = slash_map["/groupchat"]
         slash_map["/groups"] = slash_map["/groupchat"]
+    if "/toolmaker" in slash_map:
+        slash_map["/dynamic"] = slash_map["/toolmaker"]
+        slash_map["/incubator"] = slash_map["/toolmaker"]
 
     tokens = message.strip().split()
     if not tokens:

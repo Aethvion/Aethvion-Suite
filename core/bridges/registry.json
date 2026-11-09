@@ -447,6 +447,29 @@
                 "append_scratchpad": "Append an idea or agreement to a group chat's shared scratchpad. Args: 'text' (required), 'group' (optional), 'section' (optional)."
             },
             "settings": []
+        },
+        {
+            "id": "dynamic_toolmaker",
+            "name": "Dynamic Toolmaker & Incubator",
+            "description": "Autonomously invent, inspect, test, and upgrade realtime connectors and skills with non-destructive verification.",
+            "module_path": "core.bridges.dynamic_toolmaker",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-flask",
+            "slash_command": "/toolmaker",
+            "default_command": "list_tools",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "list_tools": "List all dynamic realtime connectors with version and usage telemetry.",
+                "inspect_tool": "Inspect source code, version history, and test cases of a dynamic connector. Args: 'tool' (required).",
+                "create_tool": "Create a new dynamic connector. Args: 'id' (required), 'code' (required), 'description', 'test_cmd', 'test_args'.",
+                "update_tool": "Upgrade an existing dynamic connector with backward compatibility check. Args: 'tool' (required), 'code' (required), 'summary'.",
+                "test_tool": "Run a dynamic tool command with arguments. Args: 'tool' (required), 'cmd', 'args'.",
+                "promote_tool": "Promote a verified dynamic connector to the permanent Native Suite. Args: 'tool' (required)."
+            },
+            "settings": []
         }
     ]
 }

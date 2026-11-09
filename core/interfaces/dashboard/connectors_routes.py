@@ -195,3 +195,107 @@ async def get_due_reminders():
     except Exception as e:
         logger.debug(f"[Connectors] Reminder check error: {e}")
         return {"due": []}
+
+
+# --- Dynamic Realtime Connectors Incubator Endpoints ---
+
+class CreateDynamicToolRequest(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    code: str
+    author: str = "Marcel"
+    category: str = "custom"
+    icon: str = "fas fa-wrench"
+    test_cases: List[Dict[str, Any]] = []
+
+
+class UpdateDynamicToolRequest(BaseModel):
+    code: str
+    summary: str
+    author: str = "Marcel"
+    new_version: Optional[str] = None
+    new_test_cases: Optional[List[Dict[str, Any]]] = None
+
+
+class TestDynamicToolRequest(BaseModel):
+    command: Optional[str] = ""
+    args: Optional[Dict[str, Any]] = None
+
+
+@router.get("/dynamic")
+async def get_dynamic_tools():
+    """Return all dynamic realtime connectors with versions, telemetry, and status."""
+    from core.bridges import dynamic_manager
+    tools = await asyncio.to_thread(dynamic_manager.list_dynamic_tools)
+    return {"tools": tools}
+
+
+@router.get("/dynamic/{tool_id}")
+async def get_dynamic_tool(tool_id: str):
+    """Get full details of a dynamic realtime connector."""
+    from core.bridges import dynamic_manager
+    tool = await asyncio.to_thread(dynamic_manager.get_dynamic_tool, tool_id)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Dynamic tool '{tool_id}' not found.")
+    return {"tool": tool}
+
+
+@router.post("/dynamic")
+async def create_dynamic_tool(req: CreateDynamicToolRequest):
+    """Create a new dynamic realtime connector."""
+    from core.bridges import dynamic_manager
+    res = await asyncio.to_thread(
+        dynamic_manager.create_dynamic_tool,
+        tool_id=req.id,
+        name=req.name,
+        description=req.description,
+        code=req.code,
+        author=req.author,
+        category=req.category,
+        icon=req.icon,
+        test_cases=req.test_cases,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to create dynamic connector."))
+    return res
+
+
+@router.post("/dynamic/{tool_id}/update")
+async def update_dynamic_tool(tool_id: str, req: UpdateDynamicToolRequest):
+    """Propose an update to a dynamic connector using the Non-Destructive Evolution Protocol."""
+    from core.bridges import dynamic_manager
+    res = await asyncio.to_thread(
+        dynamic_manager.propose_update,
+        tool_id=tool_id,
+        new_code=req.code,
+        change_summary=req.summary,
+        author=req.author,
+        new_version=req.new_version,
+        new_test_cases=req.new_test_cases,
+    )
+    return res
+
+
+@router.post("/dynamic/{tool_id}/test")
+async def test_dynamic_tool(tool_id: str, req: TestDynamicToolRequest):
+    """Test execute a command on a dynamic connector."""
+    from core.bridges import dynamic_manager
+    output = await asyncio.to_thread(
+        dynamic_manager.execute_dynamic_tool,
+        tool_id=tool_id,
+        command=req.command or "",
+        args=req.args or {},
+    )
+    return {"output": output}
+
+
+@router.post("/dynamic/{tool_id}/promote")
+async def promote_dynamic_tool(tool_id: str):
+    """Promote an incubating dynamic connector into the permanent Native Suite!"""
+    from core.bridges import dynamic_manager
+    res = await asyncio.to_thread(dynamic_manager.promote_to_native, tool_id)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Promotion failed."))
+    return res
+

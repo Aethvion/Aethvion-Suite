@@ -37,7 +37,10 @@
     <div class="cn-toolbar-bar">
         <div class="am-tab-bar" style="display:flex; gap:0.35rem; flex-shrink:0;">
             <button class="am-tab-btn active" data-cntab="connectors" onclick="ConnectorsView.switchTab('connectors', this)">
-                <i class="fas fa-cubes"></i> All Connectors
+                <i class="fas fa-cubes"></i> Native Connectors
+            </button>
+            <button class="am-tab-btn" data-cntab="incubator" onclick="ConnectorsView.switchTab('incubator', this)">
+                <i class="fas fa-flask" style="color:#a855f7;"></i> Realtime Incubator <span class="cn-badge-pill" id="cn-incubator-badge">0</span>
             </button>
             <button class="am-tab-btn" data-cntab="profiles" onclick="ConnectorsView.switchTab('profiles', this)">
                 <i class="fas fa-user-shield"></i> Connector Profiles
@@ -144,9 +147,473 @@
             </div>
         </div>
     </section>
+
+    <!-- Section 3: Realtime Connectors Incubator & Evolution Workbench -->
+    <section id="cn-section-incubator" style="display:none;">
+        <div class="cn-incubator-hero">
+            <div class="cn-incubator-hero-text">
+                <h2><i class="fas fa-flask" style="color:#a855f7; margin-right:0.4rem;"></i>Realtime Connectors &amp; Tool Incubator</h2>
+                <p>
+                    Companions invent, test, and upgrade custom tools live on your machine.
+                    Protected by the <strong>Non-Destructive Evolution Protocol</strong>: existing test cases are re-verified before any upgrade is certified.
+                    Tools that achieve high multi-companion adoption can be promoted to the permanent Native Suite with 1 click.
+                </p>
+            </div>
+            <div class="cn-incubator-hero-actions">
+                <button class="hub-action-btn" onclick="ConnectorsView.openCreateDynamicModal()">
+                    <i class="fas fa-plus"></i> New Dynamic Connector
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter bar for incubator -->
+        <div class="cn-incubator-filter-bar">
+            <div class="am-tab-bar" style="display:flex; gap:0.35rem;">
+                <button class="am-tab-btn active" data-incfilter="all" onclick="ConnectorsView.filterIncubator('all', this)">All Realtime Tools</button>
+                <button class="am-tab-btn" data-incfilter="incubating" onclick="ConnectorsView.filterIncubator('incubating', this)">Incubating</button>
+                <button class="am-tab-btn" data-incfilter="ready" onclick="ConnectorsView.filterIncubator('ready', this)">★ Ready for Native</button>
+                <button class="am-tab-btn" data-incfilter="promoted" onclick="ConnectorsView.filterIncubator('promoted', this)">Promoted Native</button>
+            </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:0.5rem;">
+                <button class="lm-icon-btn" onclick="ConnectorsView.refreshDynamic()" title="Refresh Incubator"><i class="fas fa-rotate"></i></button>
+            </div>
+        </div>
+
+        <div id="cn-incubator-grid" class="cn-incubator-grid">
+            <div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading Realtime Connectors...</span></div>
+        </div>
+    </section>
+
+    <!-- Modal 1: Inspect & Evolve Dynamic Tool -->
+    <div id="cn-dyn-inspect-modal" class="cn-modal-overlay" style="display:none;">
+        <div class="cn-modal-box cn-modal-lg">
+            <div class="cn-modal-header">
+                <div>
+                    <h3 id="cn-dyn-modal-title" style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-flask" style="color:#a855f7;"></i>
+                        <span>Inspect Connector</span>
+                    </h3>
+                    <p id="cn-dyn-modal-subtitle" style="margin:0.25rem 0 0; font-size:0.8rem; color:var(--text-secondary);"></p>
+                </div>
+                <button class="cn-modal-close" onclick="ConnectorsView.closeDynamicModal()">&times;</button>
+            </div>
+            <div class="cn-modal-body">
+                <!-- Tabs inside modal: Source Code vs Propose Upgrade vs Changelog -->
+                <div class="am-tab-bar" style="display:flex; gap:0.35rem; margin-bottom:1rem;">
+                    <button class="am-tab-btn active" id="cn-dyn-tab-code-btn" onclick="ConnectorsView.switchDynModalTab('code')">
+                        <i class="fas fa-code"></i> Active Code
+                    </button>
+                    <button class="am-tab-btn" id="cn-dyn-tab-evolve-btn" onclick="ConnectorsView.switchDynModalTab('evolve')">
+                        <i class="fas fa-code-branch"></i> Propose Upgrade (Non-Destructive)
+                    </button>
+                    <button class="am-tab-btn" id="cn-dyn-tab-history-btn" onclick="ConnectorsView.switchDynModalTab('history')">
+                        <i class="fas fa-history"></i> Evolution Changelog &amp; Tests
+                    </button>
+                </div>
+
+                <!-- Tab A: Code Viewer -->
+                <div id="cn-dyn-view-code">
+                    <pre class="cn-code-block"><code id="cn-dyn-code-display"></code></pre>
+                </div>
+
+                <!-- Tab B: Propose Upgrade Form -->
+                <div id="cn-dyn-view-evolve" style="display:none;">
+                    <div class="cn-info-banner" style="margin-bottom:0.85rem;">
+                        <i class="fas fa-shield-halved" style="color:var(--primary); margin-right:0.4rem;"></i>
+                        <strong>Non-Destructive Evolution:</strong> Before saving, the engine executes all existing test cases on your new code. If existing features break, the current version is preserved untouched and your update is saved as a proposal.
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label class="lm-hf-label">Change Summary / Changelog Note</label>
+                        <input type="text" id="cn-dyn-evolve-summary" class="lm-finput" placeholder="e.g. Added countdown timer and pagination support">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label class="lm-hf-label">Contributor / Author Name</label>
+                        <input type="text" id="cn-dyn-evolve-author" class="lm-finput" value="Marcel">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label class="lm-hf-label">Updated Python Implementation Code</label>
+                        <textarea id="cn-dyn-evolve-code" class="lm-finput cn-code-textarea" rows="12"></textarea>
+                    </div>
+                    <div id="cn-dyn-evolve-result" style="display:none; margin-bottom:0.75rem;"></div>
+                    <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                        <button class="hub-action-btn" onclick="ConnectorsView.submitEvolutionUpdate(this)">
+                            <i class="fas fa-check-double"></i> Verify Tests &amp; Upgrade
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab C: Evolution Changelog & Test Cases -->
+                <div id="cn-dyn-view-history" style="display:none;">
+                    <h4 style="margin:0 0 0.5rem; font-size:0.88rem; color:var(--text-secondary);">Automated Test Cases:</h4>
+                    <div id="cn-dyn-testcases-list" style="margin-bottom:1.25rem;"></div>
+
+                    <h4 style="margin:0 0 0.5rem; font-size:0.88rem; color:var(--text-secondary);">Version Evolution Timeline:</h4>
+                    <div id="cn-dyn-changelog-list" class="cn-changelog-timeline"></div>
+                </div>
+            </div>
+            <div class="cn-modal-footer">
+                <button id="cn-dyn-promote-btn" class="hub-action-btn" style="background:linear-gradient(135deg, #10b981, #059669); border:none;" onclick="ConnectorsView.promoteCurrentTool()">
+                    <i class="fas fa-star"></i> Promote to Native Suite
+                </button>
+                <button class="hub-action-btn secondary" style="margin-left:auto;" onclick="ConnectorsView.closeDynamicModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Live Test / Run Dynamic Tool -->
+    <div id="cn-dyn-test-modal" class="cn-modal-overlay" style="display:none;">
+        <div class="cn-modal-box">
+            <div class="cn-modal-header">
+                <div>
+                    <h3 id="cn-dyn-test-title" style="margin:0; font-size:1.05rem;"><i class="fas fa-play" style="color:var(--primary); margin-right:0.4rem;"></i>Test Dynamic Connector</h3>
+                    <p id="cn-dyn-test-subtitle" style="margin:0.2rem 0 0; font-size:0.78rem; color:var(--text-secondary);"></p>
+                </div>
+                <button class="cn-modal-close" onclick="ConnectorsView.closeTestModal()">&times;</button>
+            </div>
+            <div class="cn-modal-body">
+                <div style="margin-bottom:0.75rem;">
+                    <label class="lm-hf-label">Command to Execute</label>
+                    <select id="cn-dyn-test-cmd" class="lm-filter-select" style="width:100%;"></select>
+                </div>
+                <div style="margin-bottom:0.75rem;">
+                    <label class="lm-hf-label">Arguments (JSON format)</label>
+                    <textarea id="cn-dyn-test-args" class="lm-finput cn-code-textarea" rows="4">{"query": "game"}</textarea>
+                </div>
+                <button class="hub-action-btn" style="width:100%; justify-content:center;" onclick="ConnectorsView.runDynamicTest(this)">
+                    <i class="fas fa-bolt"></i> Execute Test
+                </button>
+                <div style="margin-top:0.85rem;">
+                    <label class="lm-hf-label">Output Result</label>
+                    <pre id="cn-dyn-test-output" class="cn-code-block" style="min-height:80px; max-height:220px; overflow-y:auto;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Create New Dynamic Tool -->
+    <div id="cn-dyn-create-modal" class="cn-modal-overlay" style="display:none;">
+        <div class="cn-modal-box cn-modal-lg">
+            <div class="cn-modal-header">
+                <div>
+                    <h3 style="margin:0; font-size:1.1rem;"><i class="fas fa-plus-circle" style="color:#a855f7; margin-right:0.4rem;"></i>Create Realtime Connector</h3>
+                    <p style="margin:0.25rem 0 0; font-size:0.8rem; color:var(--text-secondary);">Invent a new custom tool. Immediately available to companions and in /slash commands.</p>
+                </div>
+                <button class="cn-modal-close" onclick="ConnectorsView.closeCreateDynamicModal()">&times;</button>
+            </div>
+            <div class="cn-modal-body">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+                    <div>
+                        <label class="lm-hf-label">Tool ID (lowercase alphanumeric)</label>
+                        <input type="text" id="cn-dyn-new-id" class="lm-finput" placeholder="e.g. unity_compiler_log">
+                    </div>
+                    <div>
+                        <label class="lm-hf-label">Display Name</label>
+                        <input type="text" id="cn-dyn-new-name" class="lm-finput" placeholder="e.g. Unity Compiler Watcher">
+                    </div>
+                </div>
+                <div style="margin-bottom:0.75rem;">
+                    <label class="lm-hf-label">Description</label>
+                    <input type="text" id="cn-dyn-new-desc" class="lm-finput" placeholder="What does this tool do?">
+                </div>
+                <div style="margin-bottom:0.75rem;">
+                    <label class="lm-hf-label">Author Name</label>
+                    <input type="text" id="cn-dyn-new-author" class="lm-finput" value="Marcel">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+                    <div>
+                        <label class="lm-hf-label">Initial Test Command</label>
+                        <input type="text" id="cn-dyn-new-testcmd" class="lm-finput" placeholder="e.g. get_status">
+                    </div>
+                    <div>
+                        <label class="lm-hf-label">Expected Substring</label>
+                        <input type="text" id="cn-dyn-new-testexpect" class="lm-finput" placeholder="e.g. OK or status">
+                    </div>
+                </div>
+                <div style="margin-bottom:0.75rem;">
+                    <label class="lm-hf-label">Python Implementation Code</label>
+                    <textarea id="cn-dyn-new-code" class="lm-finput cn-code-textarea" rows="10" placeholder='def get_status(args=None):&#10;    return "System status: OK"'></textarea>
+                </div>
+                <div id="cn-dyn-create-err" style="display:none; color:#f87171; font-size:0.8rem; margin-bottom:0.5rem;"></div>
+            </div>
+            <div class="cn-modal-footer">
+                <button class="hub-action-btn secondary" onclick="ConnectorsView.closeCreateDynamicModal()">Cancel</button>
+                <button class="hub-action-btn" style="margin-left:auto;" onclick="ConnectorsView.submitCreateDynamic(this)">
+                    <i class="fas fa-check"></i> Compile &amp; Register Tool
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
+.cn-badge-pill {
+    background: #a855f7;
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 4px;
+}
+.cn-incubator-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.35rem;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(99, 102, 241, 0.05));
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 14px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.cn-incubator-hero h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.cn-incubator-hero p {
+    margin: 0.35rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    max-width: 820px;
+    line-height: 1.45;
+}
+.cn-incubator-filter-bar {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.cn-incubator-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.1rem;
+}
+.cn-inc-card {
+    background: var(--hub-card-bg, rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--hub-card-border, rgba(255, 255, 255, 0.08));
+    border-radius: 14px;
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+.cn-inc-card:hover {
+    border-color: rgba(168, 85, 247, 0.45);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.12);
+}
+.cn-inc-card.ready-native {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.14);
+}
+.cn-inc-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.cn-inc-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+.cn-inc-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(168, 85, 247, 0.14);
+    color: #a855f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.cn-inc-name {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.cn-inc-ver {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    color: #a855f7;
+    font-weight: 600;
+    margin-left: 0.3rem;
+}
+.cn-inc-status-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+.cn-inc-status-pill.incubating {
+    background: rgba(245, 158, 11, 0.16);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.cn-inc-status-pill.ready {
+    background: rgba(16, 185, 129, 0.18);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+.cn-inc-status-pill.promoted {
+    background: rgba(59, 130, 246, 0.16);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+}
+.cn-inc-desc {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.cn-inc-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+.cn-inc-telemetry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.74rem;
+}
+.cn-inc-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+.cn-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.cn-modal-box {
+    background: #111422;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+.cn-modal-box.cn-modal-lg {
+    max-width: 820px;
+}
+.cn-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.15rem 1.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cn-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.2rem 0.5rem;
+}
+.cn-modal-close:hover {
+    color: #fff;
+}
+.cn-modal-body {
+    padding: 1.35rem 1.4rem;
+    overflow-y: auto;
+    flex: 1;
+}
+.cn-modal-footer {
+    display: flex;
+    align-items: center;
+    padding: 0.9rem 1.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+.cn-code-block {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    border-radius: 10px;
+    background: #090b14;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    color: #e2e8f0;
+    line-height: 1.45;
+    overflow-x: auto;
+}
+.cn-code-textarea {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    background: #090b14;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: #e2e8f0;
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.4;
+}
+.cn-info-banner {
+    padding: 0.65rem 0.9rem;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.cn-changelog-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.cn-ch-item {
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.78rem;
+}
+
 .cn-page-wrap {
     padding: 1.25rem 1.75rem 2.5rem;
     width: 100%;

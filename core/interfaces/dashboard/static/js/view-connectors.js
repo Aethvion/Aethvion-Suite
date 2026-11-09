@@ -7,8 +7,11 @@
 const ConnectorsView = (() => {
     let _modules = [];
     let _profiles = [];
+    let _dynamicTools = [];
     let _currentTab = 'connectors';
     let _selectedProfileId = 'full_local';
+    let _incubatorFilter = 'all';
+    let _currentInspectingToolId = null;
 
     function _esc(s) {
         return String(s ?? '')
@@ -24,17 +27,26 @@ const ConnectorsView = (() => {
 
     async function refresh() {
         try {
-            const res = await fetch('/api/connectors/registry');
-            if (!res.ok) throw new Error('Failed to load connectors registry');
-            const data = await res.json();
+            const [regRes, dynRes] = await Promise.all([
+                fetch('/api/connectors/registry'),
+                fetch('/api/connectors/dynamic')
+            ]);
+            if (!regRes.ok) throw new Error('Failed to load connectors registry');
+            const data = await regRes.json();
             _modules = data.modules || [];
             _profiles = data.profiles || [];
+
+            if (dynRes.ok) {
+                const dynData = await dynRes.json();
+                _dynamicTools = dynData.tools || [];
+            }
 
             _renderStats();
             _populateSlashProfileSelect();
             if (window.AethvionSlashAutocomplete) window.AethvionSlashAutocomplete.invalidateCache();
             _renderConnectors();
             _renderProfiles();
+            _renderIncubator();
             if (typeof markPanelUpdated === 'function') markPanelUpdated('connectors');
         } catch (e) {
             console.error('[ConnectorsView] Refresh error:', e);
@@ -47,8 +59,10 @@ const ConnectorsView = (() => {
         const activeCount = _modules.filter(m => m.enabled !== false).length;
         const statActive = document.getElementById('cn-stat-active');
         const statProfiles = document.getElementById('cn-stat-profiles');
+        const incBadge = document.getElementById('cn-incubator-badge');
         if (statActive) statActive.textContent = `${activeCount}/${_modules.length}`;
         if (statProfiles) statProfiles.textContent = _profiles.length;
+        if (incBadge) incBadge.textContent = _dynamicTools.length;
     }
 
     function _populateSlashProfileSelect() {
@@ -571,9 +585,425 @@ const ConnectorsView = (() => {
         }).catch(() => {});
     }
 
+    // ── Realtime Incubator UI & Non-Destructive Evolution ──────────────────
+
+    async function refreshDynamic() {
+        try {
+            const res = await fetch('/api/connectors/dynamic');
+            if (res.ok) {
+                const data = await res.json();
+                _dynamicTools = data.tools || [];
+                _renderStats();
+                _renderIncubator();
+            }
+        } catch (e) {
+            console.error('[ConnectorsView] refreshDynamic error:', e);
+        }
+    }
+
+    function filterIncubator(filter, btn) {
+        _incubatorFilter = filter;
+        document.querySelectorAll('[data-incfilter]').forEach(b => {
+            b.classList.toggle('active', b === btn);
+        });
+        _renderIncubator();
+    }
+
+    function _renderIncubator() {
+        const grid = document.getElementById('cn-incubator-grid');
+        if (!grid) return;
+
+        let filtered = _dynamicTools;
+        if (_incubatorFilter === 'incubating') {
+            filtered = _dynamicTools.filter(t => t.status === 'incubating' && !t.ready_for_native);
+        } else if (_incubatorFilter === 'ready') {
+            filtered = _dynamicTools.filter(t => t.ready_for_native && t.status !== 'promoted');
+        } else if (_incubatorFilter === 'promoted') {
+            filtered = _dynamicTools.filter(t => t.status === 'promoted');
+        }
+
+        if (!filtered.length) {
+            grid.innerHTML = `
+                <div class="cn-empty-card" style="grid-column: 1 / -1; padding:2.5rem; text-align:center; background:rgba(255,255,255,0.02); border-radius:14px; border:1px dashed rgba(255,255,255,0.1);">
+                    <i class="fas fa-flask" style="font-size:2.2rem; color:var(--text-tertiary); margin-bottom:0.75rem;"></i>
+                    <h3 style="margin:0 0 0.4rem; font-size:1.05rem;">No realtime connectors match this filter</h3>
+                    <p style="margin:0 0 1rem; font-size:0.82rem; color:var(--text-secondary);">Companions create and evolve tools as they need them, or you can create one manually.</p>
+                    <button class="hub-action-btn" onclick="ConnectorsView.openCreateDynamicModal()"><i class="fas fa-plus"></i> Create Realtime Connector</button>
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(t => {
+            const isReady = t.ready_for_native && t.status !== 'promoted';
+            const statusClass = t.status === 'promoted' ? 'promoted' : (isReady ? 'ready' : 'incubating');
+            const statusLabel = t.status === 'promoted' ? 'Promoted Native' : (isReady ? '★ Ready for Native' : 'Incubating');
+            const tel = t.telemetry || {};
+            const calls = tel.call_count || 0;
+            const rate = t.success_rate != null ? t.success_rate : 100;
+            const collabs = (t.collaborators || [t.author || 'Companion']).join(', ');
+
+            return `
+                <div class="cn-inc-card ${isReady ? 'ready-native' : ''}">
+                    <div class="cn-inc-header">
+                        <div class="cn-inc-title-wrap">
+                            <div class="cn-inc-icon"><i class="${_esc(t.icon || 'fas fa-wrench')}"></i></div>
+                            <div>
+                                <h3 class="cn-inc-name">${_esc(t.name)} <span class="cn-inc-ver">v${_esc(t.version)}</span></h3>
+                                <div class="cn-inc-meta-row">
+                                    <span><i class="fas fa-user-astronaut"></i> ${_esc(t.author)}</span>
+                                    <span>·</span>
+                                    <span><i class="fas fa-code-fork"></i> ${_esc(t.id)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="cn-inc-status-pill ${statusClass}">${_esc(statusLabel)}</span>
+                    </div>
+
+                    <p class="cn-inc-desc">${_esc(t.description || 'Dynamic companion connector.')}</p>
+
+                    <div class="cn-inc-telemetry">
+                        <div><strong>${calls}</strong> calls · <strong>${rate}%</strong> success</div>
+                        <div style="color:var(--text-tertiary);">${(t.test_cases || []).length} test cases</div>
+                    </div>
+
+                    <div style="font-size:0.73rem; color:var(--text-tertiary);">
+                        <i class="fas fa-users" style="margin-right:0.25rem;"></i> Collaborators: ${_esc(collabs)}
+                    </div>
+
+                    <div class="cn-inc-actions">
+                        <button class="hub-action-btn secondary" style="padding:0.35rem 0.7rem; font-size:0.75rem;" onclick="ConnectorsView.openTestModal('${_esc(t.id)}')">
+                            <i class="fas fa-play"></i> Run / Test
+                        </button>
+                        <button class="hub-action-btn secondary" style="padding:0.35rem 0.7rem; font-size:0.75rem;" onclick="ConnectorsView.openDynamicModal('${_esc(t.id)}')">
+                            <i class="fas fa-code-branch"></i> Inspect &amp; Evolve
+                        </button>
+                        ${isReady ? `
+                            <button class="hub-action-btn" style="padding:0.35rem 0.7rem; font-size:0.75rem; background:#10b981; border:none; margin-left:auto;" onclick="ConnectorsView.promoteTool('${_esc(t.id)}')">
+                                <i class="fas fa-star"></i> Promote
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function openDynamicModal(toolId) {
+        _currentInspectingToolId = toolId;
+        const modal = document.getElementById('cn-dyn-inspect-modal');
+        if (!modal) return;
+
+        try {
+            const res = await fetch(`/api/connectors/dynamic/${encodeURIComponent(toolId)}`);
+            if (!res.ok) throw new Error('Failed to load tool details');
+            const data = await res.json();
+            const t = data.tool;
+
+            document.getElementById('cn-dyn-modal-title').innerHTML = `
+                <i class="${_esc(t.icon || 'fas fa-flask')}" style="color:#a855f7;"></i>
+                <span>${_esc(t.name)}</span>
+                <span style="font-size:0.75rem; color:#a855f7; font-family:'Fira Code', monospace;">v${_esc(t.version)}</span>
+            `;
+            document.getElementById('cn-dyn-modal-subtitle').textContent = `ID: ${t.id} · Creator: ${t.author} · Collaborators: ${(t.collaborators || []).join(', ')}`;
+            document.getElementById('cn-dyn-code-display').textContent = t.active_code || '';
+            document.getElementById('cn-dyn-evolve-code').value = t.active_code || '';
+            document.getElementById('cn-dyn-evolve-summary').value = '';
+
+            // Promotion button visibility
+            const promBtn = document.getElementById('cn-dyn-promote-btn');
+            if (promBtn) promBtn.style.display = t.status === 'promoted' ? 'none' : 'flex';
+
+            // Test cases
+            const tcEl = document.getElementById('cn-dyn-testcases-list');
+            if (tcEl) {
+                const tests = t.test_cases || [];
+                if (!tests.length) {
+                    tcEl.innerHTML = `<span style="font-size:0.78rem; color:var(--text-tertiary);">(No automated test cases specified)</span>`;
+                } else {
+                    tcEl.innerHTML = tests.map((tc, idx) => `
+                        <div style="padding:0.45rem 0.65rem; border-radius:6px; background:rgba(0,0,0,0.3); font-family:'Fira Code', monospace; font-size:0.74rem; margin-bottom:0.35rem;">
+                            <strong>#${idx + 1}: ${tc.command}()</strong> -> args: ${JSON.stringify(tc.args || {})}
+                            ${tc.expected_substring ? `<span style="color:#10b981;"> (expects "${_esc(tc.expected_substring)}")</span>` : ''}
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // Changelog
+            const clEl = document.getElementById('cn-dyn-changelog-list');
+            if (clEl) {
+                const logs = t.changelog || [];
+                clEl.innerHTML = logs.map(ch => `
+                    <div class="cn-ch-item">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.2rem;">
+                            <strong style="color:#a855f7;">v${_esc(ch.version)}</strong>
+                            <span style="color:var(--text-tertiary); font-size:0.72rem;">${_esc(ch.author)} · ${ch.timestamp ? ch.timestamp.slice(0, 10) : ''}</span>
+                        </div>
+                        <div style="color:var(--text-secondary);">${_esc(ch.summary)}</div>
+                    </div>
+                `).reverse().join('');
+            }
+
+            switchDynModalTab('code');
+            modal.style.display = 'flex';
+        } catch (e) {
+            alert(`Error inspecting connector: ${e.message}`);
+        }
+    }
+
+    function closeDynamicModal() {
+        const modal = document.getElementById('cn-dyn-inspect-modal');
+        if (modal) modal.style.display = 'none';
+        _currentInspectingToolId = null;
+    }
+
+    function switchDynModalTab(subtab) {
+        ['code', 'evolve', 'history'].forEach(st => {
+            const el = document.getElementById(`cn-dyn-view-${st}`);
+            const btn = document.getElementById(`cn-dyn-tab-${st}-btn`);
+            if (el) el.style.display = st === subtab ? '' : 'none';
+            if (btn) btn.classList.toggle('active', st === subtab);
+        });
+        const resEl = document.getElementById('cn-dyn-evolve-result');
+        if (resEl) resEl.style.display = 'none';
+    }
+
+    async function submitEvolutionUpdate(btn) {
+        if (!_currentInspectingToolId) return;
+        const summary = (document.getElementById('cn-dyn-evolve-summary')?.value || '').trim();
+        const author = (document.getElementById('cn-dyn-evolve-author')?.value || 'Marcel').trim();
+        const code = (document.getElementById('cn-dyn-evolve-code')?.value || '').trim();
+        const resEl = document.getElementById('cn-dyn-evolve-result');
+
+        if (!summary) {
+            alert('Please provide a changelog summary explaining what was improved or fixed.');
+            return;
+        }
+        if (!code) {
+            alert('Code cannot be empty.');
+            return;
+        }
+
+        const origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Verifying Tests...`;
+
+        try {
+            const res = await fetch(`/api/connectors/dynamic/${encodeURIComponent(_currentInspectingToolId)}/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, summary, author })
+            });
+            const data = await res.json();
+
+            if (resEl) {
+                resEl.style.display = 'block';
+                if (data.success) {
+                    resEl.className = 'cn-info-banner';
+                    resEl.style.borderColor = '#10b981';
+                    resEl.style.background = 'rgba(16, 185, 129, 0.12)';
+                    resEl.innerHTML = `<i class="fas fa-check-circle" style="color:#10b981; margin-right:0.35rem;"></i><strong>Upgrade Certified!</strong> ${data.message}`;
+                    await refreshDynamic();
+                    setTimeout(() => openDynamicModal(_currentInspectingToolId), 1200);
+                } else if (data.status === 'proposal_saved') {
+                    resEl.className = 'cn-info-banner';
+                    resEl.style.borderColor = '#f59e0b';
+                    resEl.style.background = 'rgba(245, 158, 11, 0.12)';
+                    resEl.innerHTML = `<i class="fas fa-triangle-exclamation" style="color:#f59e0b; margin-right:0.35rem;"></i><strong>Non-Destructive Protection:</strong> ${data.message}`;
+                } else {
+                    resEl.className = 'cn-info-banner';
+                    resEl.style.borderColor = '#ef4444';
+                    resEl.style.background = 'rgba(239, 68, 68, 0.12)';
+                    resEl.innerHTML = `<i class="fas fa-circle-xmark" style="color:#ef4444; margin-right:0.35rem;"></i>${data.detail || data.error || 'Failed update.'}`;
+                }
+            }
+        } catch (e) {
+            alert(`Evolution update error: ${e.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+        }
+    }
+
+    async function openTestModal(toolId) {
+        _currentInspectingToolId = toolId;
+        const modal = document.getElementById('cn-dyn-test-modal');
+        if (!modal) return;
+
+        try {
+            const res = await fetch(`/api/connectors/dynamic/${encodeURIComponent(toolId)}`);
+            if (!res.ok) throw new Error('Tool not found');
+            const data = await res.json();
+            const t = data.tool;
+
+            document.getElementById('cn-dyn-test-title').innerHTML = `<i class="fas fa-play" style="color:var(--primary); margin-right:0.4rem;"></i>Test: ${_esc(t.name)}`;
+            document.getElementById('cn-dyn-test-subtitle').textContent = `ID: ${t.id} · v${t.version}`;
+
+            const cmdSelect = document.getElementById('cn-dyn-test-cmd');
+            const commands = Object.keys(t.commands || {});
+            cmdSelect.innerHTML = commands.length ?
+                commands.map(c => `<option value="${_esc(c)}">${_esc(c)}()</option>`).join('') :
+                `<option value="run">default</option>`;
+
+            document.getElementById('cn-dyn-test-output').textContent = 'Ready to execute.';
+            modal.style.display = 'flex';
+        } catch (e) {
+            alert(`Error opening test: ${e.message}`);
+        }
+    }
+
+    function closeTestModal() {
+        const modal = document.getElementById('cn-dyn-test-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function runDynamicTest(btn) {
+        if (!_currentInspectingToolId) return;
+        const cmd = document.getElementById('cn-dyn-test-cmd')?.value || '';
+        const rawArgs = document.getElementById('cn-dyn-test-args')?.value || '{}';
+        const outEl = document.getElementById('cn-dyn-test-output');
+
+        let args = {};
+        try {
+            args = JSON.parse(rawArgs);
+        } catch (e) {
+            alert('Arguments must be valid JSON.');
+            return;
+        }
+
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Running...`;
+
+        try {
+            const res = await fetch(`/api/connectors/dynamic/${encodeURIComponent(_currentInspectingToolId)}/test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd, args })
+            });
+            const data = await res.json();
+            if (outEl) outEl.textContent = data.output || '(No output returned)';
+            refreshDynamic();
+        } catch (e) {
+            if (outEl) outEl.textContent = `Execution error: ${e.message}`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    }
+
+    function openCreateDynamicModal() {
+        const modal = document.getElementById('cn-dyn-create-modal');
+        if (!modal) return;
+        document.getElementById('cn-dyn-new-id').value = '';
+        document.getElementById('cn-dyn-new-name').value = '';
+        document.getElementById('cn-dyn-new-desc').value = '';
+        document.getElementById('cn-dyn-new-testcmd').value = 'get_info';
+        document.getElementById('cn-dyn-new-testexpect').value = 'OK';
+        document.getElementById('cn-dyn-new-code').value = `def get_info(args=None):
+    """Custom connector command."""
+    return "Status: OK"`;
+        const errEl = document.getElementById('cn-dyn-create-err');
+        if (errEl) errEl.style.display = 'none';
+        modal.style.display = 'flex';
+    }
+
+    function closeCreateDynamicModal() {
+        const modal = document.getElementById('cn-dyn-create-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function submitCreateDynamic(btn) {
+        const id = (document.getElementById('cn-dyn-new-id')?.value || '').trim();
+        const name = (document.getElementById('cn-dyn-new-name')?.value || '').trim();
+        const desc = (document.getElementById('cn-dyn-new-desc')?.value || '').trim();
+        const author = (document.getElementById('cn-dyn-new-author')?.value || 'Marcel').trim();
+        const testCmd = (document.getElementById('cn-dyn-new-testcmd')?.value || '').trim();
+        const testExpect = (document.getElementById('cn-dyn-new-testexpect')?.value || '').trim();
+        const code = (document.getElementById('cn-dyn-new-code')?.value || '').trim();
+        const errEl = document.getElementById('cn-dyn-create-err');
+
+        if (!id || !code) {
+            if (errEl) {
+                errEl.textContent = 'Please fill out Tool ID and Python Code.';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+
+        const test_cases = [];
+        if (testCmd) {
+            test_cases.push({
+                command: testCmd,
+                args: {},
+                expected_substring: testExpect
+            });
+        }
+
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Compiling...`;
+
+        try {
+            const res = await fetch('/api/connectors/dynamic', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id, name, description: desc, code, author, test_cases
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                if (errEl) {
+                    errEl.textContent = data.detail || data.error || 'Failed to create connector.';
+                    errEl.style.display = 'block';
+                }
+                return;
+            }
+            closeCreateDynamicModal();
+            await refreshDynamic();
+            if (typeof showNotification === 'function') {
+                showNotification(`Created dynamic connector '${id}' v1.0.0!`, 'success');
+            }
+        } catch (e) {
+            if (errEl) {
+                errEl.textContent = e.message;
+                errEl.style.display = 'block';
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    }
+
+    async function promoteCurrentTool() {
+        if (!_currentInspectingToolId) return;
+        await promoteTool(_currentInspectingToolId);
+        closeDynamicModal();
+    }
+
+    async function promoteTool(toolId) {
+        if (!confirm(`Are you sure you want to promote '${toolId}' to the permanent Native Suite? It will be added to core/bridges and become a permanent native connector.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/connectors/dynamic/${encodeURIComponent(toolId)}/promote`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Promotion failed.');
+            alert(data.message || 'Promoted to Native Suite!');
+            await refresh();
+        } catch (e) {
+            alert(`Promotion error: ${e.message}`);
+        }
+    }
+
     function switchTab(tab) {
         _currentTab = tab;
-        ['connectors', 'profiles'].forEach(t => {
+        ['connectors', 'incubator', 'profiles'].forEach(t => {
             const sec = document.getElementById(`cn-section-${t}`);
             if (sec) sec.style.display = t === tab ? '' : 'none';
         });
@@ -599,6 +1029,7 @@ const ConnectorsView = (() => {
     return {
         init,
         refresh,
+        refreshDynamic,
         switchTab,
         onFilterChange,
         toggleConnector,
@@ -612,6 +1043,19 @@ const ConnectorsView = (() => {
         startNewProfile,
         selectProfileConnectors,
         saveCurrentProfile,
-        deleteCurrentProfile
+        deleteCurrentProfile,
+        filterIncubator,
+        openDynamicModal,
+        closeDynamicModal,
+        switchDynModalTab,
+        submitEvolutionUpdate,
+        openTestModal,
+        closeTestModal,
+        runDynamicTest,
+        openCreateDynamicModal,
+        closeCreateDynamicModal,
+        submitCreateDynamic,
+        promoteCurrentTool,
+        promoteTool
     };
 })();
