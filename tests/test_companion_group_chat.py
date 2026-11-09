@@ -150,3 +150,54 @@ async def test_group_scratchpad_tool_execution(tmp_path, monkeypatch):
     assert len(data.get("entries", [])) == 1
     assert "Urban Legend: Ghost messages in the network" in data["entries"][0]["text"]
     assert data["entries"][0]["author"]["id"] == "misakacipher"
+
+
+@pytest.mark.asyncio
+async def test_group_chat_media_tool_followup(tmp_path, monkeypatch):
+    test_groups_dir = tmp_path / "groups"
+    monkeypatch.setattr("core.companions.group_chat_engine.GROUPS_DIR", test_groups_dir)
+    monkeypatch.setattr("core.utils.paths.COMPANION_GROUPS", test_groups_dir)
+
+    group = GroupChatEngine.create_group(
+        title="Media Room",
+        companion_ids=["misakacipher"],
+    )
+    gid = group["id"]
+
+    # Mock tool call in bridge manager
+    from core.bridges import bridge_manager
+    monkeypatch.setattr(
+        bridge_manager,
+        "call_module",
+        lambda module_id, command, args, profile_id=None: (
+            "Found video: Ghost in the Machine (https://www.youtube.com/watch?v=abc123xyz78)"
+        )
+    )
+
+    call_count = 0
+    class MockProviderResponse:
+        def __init__(self, content):
+            self.success = True
+            self.content = content
+            self.error = None
+
+    class MockProviderManager:
+        def call_with_failover(self, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return MockProviderResponse(
+                    "Searching YouTube now! [tool:bridge module=\"youtube_link\" cmd=\"search_videos\" query=\"ghost lore\"]"
+                )
+            else:
+                return MockProviderResponse(
+                    "Check out this creepy lore video: https://www.youtube.com/watch?v=abc123xyz78 It is super eerie!"
+                )
+
+    monkeypatch.setattr("core.companions.group_chat_engine.get_provider_manager", lambda: MockProviderManager())
+
+    turn_res = await GroupChatEngine.generate_companion_turn(gid, "misakacipher")
+    assert call_count == 2  # Turn 1 tool call + Turn 2 followup completion!
+    msg = turn_res["message"]
+    assert "https://www.youtube.com/watch?v=abc123xyz78" in msg["content"]
+    assert "[tool:" not in msg["content"]

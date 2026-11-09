@@ -5276,12 +5276,20 @@ const CompanionCreator = (() => {
         }
     }
 
-    function _formatGroupMessageContent(raw) {
+    function _formatGroupMessageContent(raw, attachments = null) {
         if (!raw) return '';
-        let s = _esc(raw);
-        // Highlight @mentions
-        s = s.replace(/@([A-Za-z0-9_]+)/g, '<span class="gc-mention-pill">@$1</span>');
-        return s.replace(/\n/g, '<br>');
+        let html = '';
+        if (typeof _renderMd === 'function') {
+            html = _renderMd(raw, true);
+        } else {
+            html = _esc(raw).replace(/\n/g, '<br>');
+        }
+        // Highlight @mentions in HTML
+        html = html.replace(/@([A-Za-z0-9_]+)/g, '<span class="gc-mention-pill">@$1</span>');
+        if (Array.isArray(attachments) && attachments.length && typeof _renderAttachmentsBlock === 'function') {
+            html += _renderAttachmentsBlock(attachments, raw);
+        }
+        return html;
     }
 
     function _renderGroupChat(group) {
@@ -5312,7 +5320,7 @@ const CompanionCreator = (() => {
                             const isUser = m.is_user || m.id === 'marcel';
                             return `
                                 <span class="gc-member-chip" style="background:${_esc(m.accent_color)}25; color:${_esc(m.accent_color)}; border-color:${_esc(m.accent_color)}40;" title="${isUser ? 'Marcel (User)' : 'Click to @mention ' + m.name}" onclick="window._groupChatInsertMention('${_esc(m.name)}')">
-                                    ${_renderGroupAvatar(m.id, m.name, m.avatar_symbol, m.accent_color, 18)}
+                                    ${_renderGroupAvatar(m.id, m.name, m.avatar_symbol, m.accent_color, 22)}
                                     <span>${_esc(m.name)}</span>
                                     ${!isUser ? `<i class="fas fa-times gc-member-kick-btn" title="Kick from group" onclick="event.stopPropagation(); window._groupChatKickMember('${_esc(group.id)}', '${_esc(m.id)}', '${_esc(m.name)}')"></i>` : ''}
                                 </span>
@@ -5376,7 +5384,7 @@ const CompanionCreator = (() => {
                             <span><i class="fas fa-at"></i> Ping:</span>
                             ${members.filter(m => !m.is_user && m.id !== 'marcel').map(m => `
                                 <button type="button" class="gc-ping-btn" onclick="window._groupChatInsertMention('${_esc(m.name)}')">
-                                    ${_renderGroupAvatar(m.id, m.name, m.avatar_symbol, m.accent_color, 16)}
+                                    ${_renderGroupAvatar(m.id, m.name, m.avatar_symbol, m.accent_color, 20)}
                                     <span>@${_esc(m.name)}</span>
                                 </button>
                             `).join('')}
@@ -5423,6 +5431,7 @@ const CompanionCreator = (() => {
         `;
 
         _initGroupChatEvents(group);
+        if (typeof _applyHighlight === 'function') _applyHighlight(document.getElementById('gc-msgs-scroll'));
         _scrollGroupChatToBottom(true);
     }
 
@@ -5435,20 +5444,23 @@ const CompanionCreator = (() => {
                 return `<div class="gc-system-pill">${_esc(m.content)}</div>`;
             }
             const isUser = m.author_role === 'user' || m.author_id === 'marcel';
-            const color = m.accent_color || '#6366f1';
+            const color = m.accent_color || (isUser ? '#10b981' : '#6366f1');
             const timeStr = m.timestamp ? (new Date(m.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const bubbleStyle = isUser
+                ? 'background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);'
+                : `background: ${color}14; border-color: ${color}38; box-shadow: 0 4px 14px ${color}10;`;
 
             return `
-                <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${!isUser ? `border-left: 3px solid ${color};` : ''}">
+                <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${bubbleStyle}">
                     <div class="gc-msg-header">
                         <span class="gc-msg-author" style="color:${color};">
-                            ${_renderGroupAvatar(m.author_id, m.author_name, m.avatar_symbol, color, 20)}
+                            ${_renderGroupAvatar(m.author_id, m.author_name, m.avatar_symbol, color, 28)}
                             <span>${_esc(m.author_name || m.author_id)}</span>
                         </span>
                         ${m.mood ? `<span class="gc-msg-badge">${_esc(m.mood)}</span>` : ''}
                         <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
                     </div>
-                    <div class="gc-msg-body">${_formatGroupMessageContent(m.content)}</div>
+                    <div class="gc-msg-body">${_formatGroupMessageContent(m.content, m.attachments)}</div>
                 </div>
             `;
         }).join('');
@@ -5610,19 +5622,20 @@ const CompanionCreator = (() => {
             // Append message card
             const timeStr = userMsg.timestamp ? (new Date(userMsg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
             const msgHtml = `
-                <div class="gc-msg-card is-user">
+                <div class="gc-msg-card is-user" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);">
                     <div class="gc-msg-header">
                         <span class="gc-msg-author" style="color:#10b981;">
-                            ${_renderGroupAvatar('marcel', 'Marcel', '👤', '#10b981', 20)}
+                            ${_renderGroupAvatar('marcel', 'Marcel', '👤', '#10b981', 28)}
                             <span>Marcel</span>
                         </span>
                         <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
                     </div>
-                    <div class="gc-msg-body">${_formatGroupMessageContent(userMsg.content)}</div>
+                    <div class="gc-msg-body">${_formatGroupMessageContent(userMsg.content, userMsg.attachments)}</div>
                 </div>
             `;
             if (msgsScroll) {
                 msgsScroll.insertAdjacentHTML('beforeend', msgHtml);
+                if (typeof _applyHighlight === 'function') _applyHighlight(msgsScroll);
                 _scrollGroupChatToBottom();
             }
 
@@ -5681,20 +5694,22 @@ const CompanionCreator = (() => {
             if (msgsScroll && msg) {
                 const color = msg.accent_color || '#6366f1';
                 const timeStr = msg.timestamp ? (new Date(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const bubbleStyle = `background: ${color}14; border-color: ${color}38; box-shadow: 0 4px 14px ${color}10;`;
                 const msgHtml = `
-                    <div class="gc-msg-card is-companion" style="border-left: 3px solid ${color};">
+                    <div class="gc-msg-card is-companion" style="${bubbleStyle}">
                         <div class="gc-msg-header">
                             <span class="gc-msg-author" style="color:${color};">
-                                ${_renderGroupAvatar(msg.author_id, msg.author_name, msg.avatar_symbol, color, 20)}
+                                ${_renderGroupAvatar(msg.author_id, msg.author_name, msg.avatar_symbol, color, 28)}
                                 <span>${_esc(msg.author_name || msg.author_id)}</span>
                             </span>
                             ${msg.mood ? `<span class="gc-msg-badge">${_esc(msg.mood)}</span>` : ''}
                             <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
                         </div>
-                        <div class="gc-msg-body">${_formatGroupMessageContent(msg.content)}</div>
+                        <div class="gc-msg-body">${_formatGroupMessageContent(msg.content, msg.attachments)}</div>
                     </div>
                 `;
                 msgsScroll.insertAdjacentHTML('beforeend', msgHtml);
+                if (typeof _applyHighlight === 'function') _applyHighlight(msgsScroll);
                 _scrollGroupChatToBottom();
             }
 

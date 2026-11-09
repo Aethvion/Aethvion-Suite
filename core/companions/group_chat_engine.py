@@ -427,14 +427,14 @@ class GroupChatEngine:
             f"- **Address and ping others naturally**: You are encouraged to speak directly to fellow members and use @mentions (e.g. @Lyra, @Axiom, @Marcel) when asking questions, agreeing, building on their ideas, or playfully debating.\n"
             f"- **Respond to your mentions**: If you were asked or mentioned in the recent dialogue, answer directly from your unique perspective and expertise.\n"
             f"- **Add your unique angle**: Don't just repeat what others said. Bring your own distinct background, ideas, and personality into the room.\n"
+            f"- **ACT WITH TOOLS IMMEDIATELY (CRITICAL - DO NOT JUST PROMISE)**: When someone asks for or suggests YouTube videos, songs, web searches, or PC information, DO NOT just say 'I am searching for it' or 'Let me find some'. YOU MUST CALL THE TOOL IN THIS VERY MESSAGE! For example, emit: [tool:bridge module=\"youtube_link\" cmd=\"search_videos\" query=\"...\"] or [tool:bridge module=\"spotify\" cmd=\"play\" target=\"...\"] or [tool:bridge module=\"web_search\" cmd=\"search\" query=\"...\"]. The system will run the search and give you the real URLs and titles to share with everyone.\n"
+            f"- **INCLUDE FULL MEDIA URLS**: When recommending or sharing a YouTube video or Spotify track, always include the full watch URL (https://www.youtube.com/watch?v=...) or track URL so the interactive, playable player embeds directly in the group chat.\n"
             f"- **Collaborative Scratchpad**: To record an idea, task, or note onto our shared group scratchpad, use [tool:companion_scratchpad cmd=\"append\" text=\"...\"] (or [tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]) — it will be recorded into the shared group canvas with your author attribution.\n"
             f"- **Keep it conversational**: Deliver your thought in 1 to 2 engaging, natural paragraphs.\n\n"
-            f"Recent Group Conversation:\n{conv_transcript}\n\n"
-            f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant."
+            + (f"{bridges_block}\n\n" if bridges_block else "")
+            + f"Recent Group Conversation:\n{conv_transcript}\n\n"
+            f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant. If requested or searching for media, emit the tool tag now."
         )
-
-        if bridges_block:
-            prompt += f"\n\n{bridges_block}"
 
         pm = get_provider_manager()
         model = cfg.default_model or get_preferences_manager().get(cfg.id, {}).get("model") or "auto"
@@ -455,6 +455,7 @@ class GroupChatEngine:
         content = response.content.strip()
 
         # Handle tools if emitted
+        attachments: list[dict] = []
         if "[tool:" in content and caps.get("tools_enabled", True):
             round_results = []
             cleaned = content
@@ -465,6 +466,35 @@ class GroupChatEngine:
                     round_results = tool_event["results"]
             if cleaned:
                 content = cleaned
+
+            # Extract any media captures or URLs
+            from core.companions.engine.tools import extract_peripheral_captures
+            _, tool_att_meta = extract_peripheral_captures(round_results, [])
+            if tool_att_meta:
+                attachments.extend(tool_att_meta)
+
+            # If tool returned informative data (YouTube links, web results, PC info), run follow-up completion!
+            has_informative_result = any(
+                not r.startswith("[scratchpad") and not r.startswith("[companion_scratchpad")
+                for r in round_results
+            )
+            if round_results and has_informative_result:
+                followup_prompt = (
+                    f"{prompt}\n\n"
+                    f"## Tool Execution Results:\n"
+                    + "\n".join(round_results)
+                    + f"\n\nTask: Deliver your reply in character as {cfg.name} incorporating the findings, links, or media above directly into your response. Include the full URL (e.g. YouTube watch link https://www.youtube.com/watch?v=... or Spotify track link) so the interactive embed renders in the chat!"
+                )
+                r2 = await asyncio.to_thread(
+                    pm.call_with_failover,
+                    prompt=followup_prompt,
+                    trace_id=f"group-{group_id}-{cfg.id}-{uuid.uuid4().hex[:4]}-r2",
+                    temperature=behavior.get("temperature", 0.85),
+                    model=model,
+                    source=f"groupchat-{cfg.id}-tool-followup",
+                )
+                if r2.success and r2.content.strip():
+                    content = r2.content.strip()
 
         # Parse mood / expression
         mood = behavior.get("default_mood", "calm")
@@ -498,6 +528,7 @@ class GroupChatEngine:
             "mood": mood,
             "expression": expression,
             "mentions": companion_mentions,
+            "attachments": attachments,
         }
 
         hist = _load_history(group_id)
