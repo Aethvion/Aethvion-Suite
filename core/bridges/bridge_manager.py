@@ -38,7 +38,8 @@ DEFAULT_PROFILES = [
             "youtube_link",
             "reddit",
             "weather_link",
-            "spotify"
+            "spotify",
+            "group_chat"
         ]
     },
     {
@@ -57,7 +58,8 @@ DEFAULT_PROFILES = [
             "youtube_link",
             "reddit",
             "weather_link",
-            "spotify"
+            "spotify",
+            "group_chat"
         ]
     },
     {
@@ -76,7 +78,8 @@ DEFAULT_PROFILES = [
             "scratchpad",
             "companion_timer",
             "flow_state",
-            "weather_link"
+            "weather_link",
+            "group_chat"
         ]
     },
     {
@@ -321,6 +324,9 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         slash_map["/followup"] = slash_map["/timer"]
     if "/vibe" in slash_map:
         slash_map["/flow"] = slash_map["/vibe"]
+    if "/groupchat" in slash_map:
+        slash_map["/gc"] = slash_map["/groupchat"]
+        slash_map["/groups"] = slash_map["/groupchat"]
 
     tokens = message.strip().split()
     if not tokens:
@@ -428,6 +434,19 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
             cmd = "suggest_vibe"
         else:
             cmd = "get_flow_state"
+    elif mod_id == "group_chat":
+        low_arg = arg_text.lower().strip()
+        if not low_arg or low_arg in ("list", "all", "groups"):
+            cmd = "list_groups"
+        elif low_arg.startswith(("history ", "read ", "log ")):
+            cmd = "read_history"
+            args["group"] = arg_text.split(None, 1)[1] if len(arg_text.split()) > 1 else ""
+        elif low_arg.startswith(("scratchpad ", "notes ", "canvas ")):
+            cmd = "read_scratchpad"
+            args["group"] = arg_text.split(None, 1)[1] if len(arg_text.split()) > 1 else ""
+        else:
+            cmd = "search_messages"
+            args["query"] = arg_text
 
     output = call_module(mod_id, cmd, args, profile_id=profile_id)
     raw_outputs.append(output)

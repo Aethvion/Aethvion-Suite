@@ -99,6 +99,16 @@ class CompanionEngine:
         except Exception as _fe:
             logger.debug(f"[{config.id}] Flow state context skipped: {_fe}")
 
+        # Ambient group chat context for proactive check-ins
+        gc_context = ""
+        try:
+            from core.bridges.group_chat_bridge import get_group_chat_awareness_block
+            gc_block = get_group_chat_awareness_block(companion_id=config.id)
+            if gc_block:
+                gc_context = f"\n\n{gc_block}"
+        except Exception as _gce:
+            logger.debug(f"[{config.id}] Group chat awareness skipped for proactive check-in: {_gce}")
+
         # On-demand tools & restraint rules for proactive check-ins:
         # Do NOT pre-dump open windows, Spotify, or CPU/RAM telemetry into the prompt,
         # because pre-injected telemetry causes the model to recite a surveillance status report every time.
@@ -141,7 +151,7 @@ class CompanionEngine:
                 system_prompt += f"\n\nCurrent time: {now.strftime('%A, %d %B %Y — %H:%M')}"
             if proactive_bridges_block:
                 system_prompt += f"\n\n{proactive_bridges_block}"
-            system_prompt += flow_context + recent_chat_context + natural_checkin_rules + expr_hint
+            system_prompt += flow_context + gc_context + recent_chat_context + natural_checkin_rules + expr_hint
         else:
             bi = mem_data.get("base_info", {})
             mem = mem_data.get("memory", {})
@@ -155,6 +165,7 @@ class CompanionEngine:
                 f"Time since last message: {time_desc}"
                 + (f"\n\n{proactive_bridges_block}" if proactive_bridges_block else "")
                 + f"{flow_context}"
+                + f"{gc_context}"
                 + f"{recent_chat_context}"
                 + f"{natural_checkin_rules}"
                 + f"{expr_hint}\n\n"
@@ -362,6 +373,22 @@ class CompanionEngine:
                     system_prompt += f"\n\n## Visual Context Memory (Recent Layouts on File)\n{vmem_summary}"
             except Exception as _vm_err:
                 logger.debug(f"[{config.id}] Visual memory context injection skipped: {_vm_err}")
+
+            # Group chat ambient awareness & dynamic reference retrieval
+            try:
+                from core.bridges.group_chat_bridge import (
+                    get_group_chat_awareness_block,
+                    detect_and_retrieve_group_context,
+                )
+                gc_awareness = get_group_chat_awareness_block(companion_id=config.id)
+                if gc_awareness:
+                    system_prompt += f"\n\n{gc_awareness}"
+
+                auto_gc_context = detect_and_retrieve_group_context(message, companion_id=config.id)
+                if auto_gc_context:
+                    system_prompt += f"\n\n{auto_gc_context}"
+            except Exception as _gc_err:
+                logger.debug(f"[{config.id}] Group chat context injection skipped: {_gc_err}")
 
             # Multi-message style & conversational flow
             system_prompt += (

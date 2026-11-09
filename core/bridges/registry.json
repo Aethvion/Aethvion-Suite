@@ -425,6 +425,28 @@
                 "client_secret",
                 "redirect_uri"
             ]
+        },
+        {
+            "id": "group_chat",
+            "name": "Group Chat Context & Memory",
+            "description": "Search, recall, and retrieve discussions, agreements, decisions, and shared scratchpads from multi-companion group chats.",
+            "module_path": "core.bridges.group_chat_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-users-line",
+            "slash_command": "/groupchat",
+            "default_command": "search_messages",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "search_messages": "Search messages across group chats by keyword or topic. Args: 'query' (required), 'group' (optional title or ID), 'author' (optional), 'limit' (optional).",
+                "read_history": "Read the recent message history of a group chat. Args: 'group' (group title or ID, optional/fuzzy), 'limit' (optional, default 20).",
+                "read_scratchpad": "Read the shared brainstorming scratchpad for a group chat. Args: 'group' (group title or ID, optional/fuzzy), 'section' (optional).",
+                "list_groups": "List all group chats with their titles, member rosters, and recent activity.",
+                "append_scratchpad": "Append an idea or agreement to a group chat's shared scratchpad. Args: 'text' (required), 'group' (optional), 'section' (optional)."
+            },
+            "settings": []
         }
     ]
 }
