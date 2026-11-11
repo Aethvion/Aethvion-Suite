@@ -1,0 +1,59 @@
+{
+  "type": "input.image",
+  "label": "Image",
+  "category": "Inputs",
+  "icon": "fa-image",
+  "color": "#fbbf24",
+  "description": "Holds a picture you already have and feeds it into the workflow: a concept sketch, a reference photo, a texture. Pick a file, or paste an Asset Library id.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Image Override",
+      "description": "File path, asset id or data URI that replaces the configured image at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "image",
+      "label": "Image",
+      "description": "The picture as an image asset. Wire it into Generate 3D Model, Analyze Image, AI Verify, Texture and so on."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the image file."
+    },
+    {
+      "name": "width",
+      "label": "Width",
+      "description": "Width in pixels."
+    },
+    {
+      "name": "height",
+      "label": "Height",
+      "description": "Height in pixels."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the image could not be loaded."
+    }
+  ],
+  "properties": [
+    {
+      "key": "image",
+      "label": "Image",
+      "type": "text",
+      "default": "",
+      "placeholder": "D:/art/concept.png  or  ast_1a2b3c4d5e6f",
+      "picker": "file"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "",
+      "placeholder": "reference, concept (comma-separated)"
+    }
+  ]
+}

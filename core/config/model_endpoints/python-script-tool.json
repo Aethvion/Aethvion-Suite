@@ -1,0 +1,27 @@
+{
+  "template": true,
+  "id": "python-script-tool",
+  "name": "Your own script",
+  "description": "Run any script or program as a pipeline step. The command receives the input file path and must write its result to the output path. Replace the script path, the capability and the output kind to fit.",
+  "capabilities": [
+    "custom"
+  ],
+  "adapter": "command",
+  "output": {
+    "kind": "file",
+    "ext": "bin"
+  },
+  "command": {
+    "args": [
+      "python",
+      "C:/path/to/your_script.py",
+      "--input",
+      "{{mesh_path}}",
+      "--prompt",
+      "{{prompt}}",
+      "--output",
+      "{{output_path}}"
+    ],
+    "timeout": 600
+  }
+}

@@ -11,12 +11,32 @@
       "description": "Text description of the image to generate."
     },
     {
+      "name": "image",
+      "label": "Reference Image",
+      "description": "Optional reference / input image (asset, file path or data URI), for models that support it."
+    },
+    {
+      "name": "negative_prompt",
+      "label": "Negative Prompt",
+      "description": "What the image should not contain (models that support it)."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured image model at runtime."
+    },
+    {
       "name": "path",
       "label": "Save Path Override",
       "description": "Overrides the configured save path at runtime."
     }
   ],
   "outputs": [
+    {
+      "name": "image",
+      "label": "Image",
+      "description": "The generated image as a library asset. Wire this into 3D, vision or verify nodes."
+    },
     {
       "name": "out",
       "label": "Saved File Path",
@@ -25,7 +45,7 @@
     {
       "name": "path",
       "label": "Saved File Path",
-      "description": "Alias of the 'out' port — same path value."
+      "description": "Alias of the 'out' port: same path value."
     },
     {
       "name": "count",
@@ -42,9 +62,10 @@
     {
       "key": "model",
       "label": "Model",
-      "type": "text",
+      "type": "model_select",
       "default": "imagen-3.0-generate-002",
-      "placeholder": "imagen-3.0-generate-002"
+      "placeholder": "Select an image model…",
+      "source": "/api/modelhub/models?capability=image.generate"
     },
     {
       "key": "aspect_ratio",
@@ -64,8 +85,9 @@
       "label": "Save Path",
       "type": "text",
       "default": "",
-      "placeholder": "(blank = auto-generated temp file)",
+      "placeholder": "(blank = keep in the Asset Library only)",
       "picker": "folder"
     }
-  ]
+  ],
+  "description": "Generate an image with any image model: local checkpoints, SD WebUI, cloud models or a custom endpoint from the Model Hub."
 }

@@ -78,7 +78,7 @@ class ProviderManager:
         
         # Load configuration
         if config_path is None:
-            # __file__ = core/providers/provider_manager.py â†’ parent.parent.parent = project root
+            # __file__ = core/providers/provider_manager.py → parent.parent.parent = project root
             project_root = Path(__file__).parent.parent.parent
             config_path = project_root / "core" / "config" / "providers.yaml"
         
@@ -179,7 +179,7 @@ class ProviderManager:
             self._load_config(config_path)
             self._initialize_providers()
 
-        # Update active provider instances â€” self.registry already loaded above,
+        # Update active provider instances — self.registry already loaded above,
         # no need to open model_registry.json again.
         for name, reg_config in self.registry.get('providers', {}).items():
             if name in self.providers:
@@ -298,7 +298,7 @@ class ProviderManager:
         model_order = []
         is_agent = request_type == "agent_call" or "agent" in request_type
 
-        # Soft context-isolation check â€” logs warnings, never blocks execution.
+        # Soft context-isolation check — logs warnings, never blocks execution.
         # Add new call modes to core/ai/call_contexts.py, not here.
         try:
             from core.ai.call_contexts import validate_call_context, CallSource
@@ -520,7 +520,7 @@ class ProviderManager:
                 return ProviderResponse(
                     content="", model="none", provider="none", trace_id=trace_id,
                     error="Privacy Mode/local only is active but no local models are configured. "
-                          "Add an Ollama or local model in Settings â†’ Model Hub."
+                          "Add an Ollama or local model in Settings → Model Hub."
                 )
             logger.info(f"[{trace_id}] Privacy mode/local only: restricted to local models {model_order}")
 
@@ -629,7 +629,7 @@ class ProviderManager:
                 if last_error and _is_auth_error(last_error):
                     provider.record_auth_failure()
                     logger.warning(
-                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE â€” "
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
                         "authentication failure (key invalid or expired)"
                     )
 
@@ -639,7 +639,7 @@ class ProviderManager:
                 if _is_auth_error(last_error):
                     provider.record_auth_failure()
                     logger.warning(
-                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE â€” "
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
                         "authentication failure (key invalid or expired)"
                     )
         
@@ -684,7 +684,7 @@ class ProviderManager:
                     f"Original order was: {original_order}. "
                     "Add a local/ollama model in Settings to use Privacy Mode."
                 )
-                yield "Error: Privacy Mode/local only is active but no local models are configured. Add an Ollama or local model in Settings â†’ Model Hub."
+                yield "Error: Privacy Mode/local only is active but no local models are configured. Add an Ollama or local model in Settings → Model Hub."
                 return
             logger.info(f"[{trace_id}] Privacy mode/local only: restricted to local models {model_order}")
 
@@ -755,7 +755,7 @@ class ProviderManager:
                 if _is_auth_error(last_error):
                     provider.record_auth_failure()
                     logger.warning(
-                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE â€” "
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
                         "authentication failure (key invalid or expired)"
                     )
 

@@ -1,0 +1,65 @@
+{
+  "type": "flow.subworkflow",
+  "label": "Run Workflow",
+  "category": "Flow",
+  "icon": "fa-diagram-project",
+  "color": "#38bdf8",
+  "description": "Run another workflow as one step. Its Workflow Input / Global nodes receive your values; its Workflow Return nodes come back.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Passed to the workflow as its 'input' variable."
+    },
+    {
+      "name": "variables",
+      "label": "Variables",
+      "description": "Object of named values for the workflow's inputs."
+    },
+    {
+      "name": "workflow",
+      "label": "Workflow Override",
+      "description": "Workflow id or name, overriding the configured one."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Result",
+      "description": "The return named 'result' (or the first return)."
+    },
+    {
+      "name": "returns",
+      "label": "All Returns",
+      "description": "Every returned value as an object."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "workflow",
+      "label": "Workflow",
+      "type": "model_select",
+      "source": "/api/automate/workflow-options",
+      "default": "",
+      "placeholder": "Select a workflow…"
+    },
+    {
+      "key": "input_name",
+      "label": "Input Variable Name",
+      "type": "text",
+      "default": "input"
+    },
+    {
+      "key": "variables",
+      "label": "Variables (JSON)",
+      "type": "code",
+      "default": "",
+      "placeholder": "{\"style\": \"low-poly\"}"
+    }
+  ]
+}

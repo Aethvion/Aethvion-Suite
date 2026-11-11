@@ -1,0 +1,59 @@
+{
+  "type": "asset.load",
+  "label": "Load Asset",
+  "category": "Assets",
+  "icon": "fa-box-open",
+  "color": "#fbbf24",
+  "description": "Bring an existing asset into the workflow: by library id, or by importing a file from disk.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Asset ID or Path",
+      "description": "Overrides the configured asset at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Asset",
+      "description": "The asset."
+    },
+    {
+      "name": "text",
+      "label": "Text",
+      "description": "File contents, for text and JSON assets."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the file."
+    },
+    {
+      "name": "kind",
+      "label": "Kind",
+      "description": "text, image, mesh, audio, video, json or file."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "asset",
+      "label": "Asset ID or File Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "ast_1a2b3c4d5e6f  or  D:/art/concept.png",
+      "picker": "file"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "",
+      "placeholder": "prop, medieval, draft (comma-separated)"
+    }
+  ]
+}

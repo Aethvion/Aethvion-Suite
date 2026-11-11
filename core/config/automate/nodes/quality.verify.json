@@ -1,0 +1,100 @@
+{
+  "type": "quality.verify",
+  "label": "AI Verify",
+  "category": "Models",
+  "icon": "fa-clipboard-check",
+  "color": "#f472b6",
+  "description": "A reviewer model scores any output (text, image, 3D model) against your criteria and routes it to Pass or Fail. For 3D models it reads the measured mesh facts and the embedded textures.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Subject",
+      "description": "The thing to verify: text, an image, or a mesh asset."
+    },
+    {
+      "name": "criteria",
+      "label": "Criteria",
+      "description": "Overrides the configured criteria at runtime."
+    },
+    {
+      "name": "context",
+      "label": "Context",
+      "description": "Extra facts for the reviewer: the original brief, a mesh summary, etc."
+    },
+    {
+      "name": "image",
+      "label": "Preview Image",
+      "description": "Optional extra image(s) of the work, e.g. a render of the model."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the reviewer model at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "pass",
+      "label": "Pass",
+      "description": "The subject, when it passed."
+    },
+    {
+      "name": "fail",
+      "label": "Fail",
+      "description": "The subject, when it failed."
+    },
+    {
+      "name": "passed",
+      "label": "Passed",
+      "description": "true / false."
+    },
+    {
+      "name": "score",
+      "label": "Score",
+      "description": "0 to 100."
+    },
+    {
+      "name": "feedback",
+      "label": "Feedback",
+      "description": "Actionable instructions for the next attempt."
+    },
+    {
+      "name": "issues",
+      "label": "Issues",
+      "description": "Problems found, one per line."
+    },
+    {
+      "name": "report",
+      "label": "Report",
+      "description": "Full verdict as an object."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Reviewer Model",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "Select a model (vision-capable for images / textures)…"
+    },
+    {
+      "key": "criteria",
+      "label": "Criteria",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "What does a good result look like? e.g. Matches the brief, game-ready, no baked-in lighting, consistent style."
+    },
+    {
+      "key": "threshold",
+      "label": "Pass Score (0-100)",
+      "type": "number",
+      "default": 70
+    }
+  ]
+}

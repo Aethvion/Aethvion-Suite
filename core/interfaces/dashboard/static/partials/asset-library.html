@@ -1,0 +1,125 @@
+<div id="al-root" class="al-root">
+
+    <div class="al-header">
+        <div class="al-header-title">
+            <span class="al-header-icon"><i class="fas fa-boxes-stacked"></i></span>
+            <div>
+                <h2>Assets &amp; Models</h2>
+                <p>Everything your workflows produce, and every model they can call.</p>
+            </div>
+        </div>
+        <nav class="al-nav">
+            <button class="al-nav-tab active" data-al-tab="assets"><i class="fas fa-box-archive"></i> Asset Library</button>
+            <button class="al-nav-tab" data-al-tab="models"><i class="fas fa-cubes-stacked"></i> Model Endpoints</button>
+        </nav>
+    </div>
+
+    <div class="al-body">
+
+        <!-- Asset Library -->
+        <section id="al-pane-assets" class="al-pane active">
+            <div class="al-toolbar">
+                <div class="al-kinds" id="al-kinds"></div>
+                <div class="al-toolbar-right">
+                    <input id="al-search" class="control-input al-search" type="search" placeholder="Search name, tag, prompt, model…">
+                    <label class="al-btn" title="Add a file to the library">
+                        <i class="fas fa-upload"></i> Upload
+                        <input id="al-upload" type="file" hidden>
+                    </label>
+                    <button class="al-btn al-btn-icon" id="al-refresh" title="Refresh"><i class="fas fa-rotate"></i></button>
+                </div>
+            </div>
+            <div class="al-split">
+                <div class="al-grid-wrap">
+                    <div class="al-grid" id="al-grid"></div>
+                    <div class="al-empty" id="al-empty" style="display:none">
+                        <i class="fas fa-box-open"></i>
+                        <strong>No assets yet</strong>
+                        <span>Run a workflow that uses a Models node — everything it generates is kept here with its history.
+                        Try <em>Automate → Examples → 3D Prop Pipeline</em>.</span>
+                    </div>
+                    <button class="al-btn al-more" id="al-more" style="display:none">Load more</button>
+                </div>
+                <aside class="al-detail" id="al-detail" style="display:none"></aside>
+            </div>
+        </section>
+
+        <!-- Model Endpoints -->
+        <section id="al-pane-models" class="al-pane">
+            <div class="al-toolbar">
+                <div class="al-kinds" id="al-caps"></div>
+                <div class="al-toolbar-right">
+                    <button class="al-btn al-btn-primary" id="al-add-endpoint"><i class="fas fa-plus"></i> Add endpoint</button>
+                    <button class="al-btn al-btn-icon" id="al-refresh-models" title="Refresh"><i class="fas fa-rotate"></i></button>
+                </div>
+            </div>
+            <div class="al-models-wrap">
+                <p class="al-hint">
+                    An endpoint is any model the Suite can call. Built-in ones come from your configured providers and the
+                    Image / 3D tabs. Add your own to plug in a local server, a hosted API or a command-line tool such as
+                    Blender — no code needed. Workflow nodes pick endpoints by what they can do.
+                </p>
+                <div id="al-endpoints"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Endpoint editor -->
+    <div class="al-modal" id="al-modal" style="display:none">
+        <div class="al-modal-card">
+            <div class="al-modal-hdr">
+                <strong id="al-modal-title">Add endpoint</strong>
+                <button class="al-btn al-btn-icon" id="al-modal-close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="al-modal-body">
+                <div class="al-field" id="al-template-row">
+                    <label>Start from a template</label>
+                    <select id="al-template" class="control-select"></select>
+                    <small id="al-template-desc"></small>
+                </div>
+                <div class="al-field">
+                    <label>Definition (JSON)</label>
+                    <textarea id="al-def" class="al-code" spellcheck="false"></textarea>
+                    <small>Placeholders: <code>{{prompt}}</code> <code>{{image_b64}}</code> <code>{{image_path}}</code>
+                        <code>{{mesh_path}}</code> <code>{{mesh_b64}}</code> <code>{{params.name}}</code>
+                        <code>{{output_path}}</code> · secrets: <code>${ENV_VAR}</code> (set in <code>.env</code>).
+                        Full reference: <code>docs/modelhub/overview.md</code></small>
+                </div>
+                <div class="al-msg" id="al-modal-msg"></div>
+            </div>
+            <div class="al-modal-ftr">
+                <button class="al-btn" id="al-modal-validate">Check</button>
+                <button class="al-btn al-btn-primary" id="al-modal-save">Save endpoint</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Endpoint test -->
+    <div class="al-modal" id="al-test" style="display:none">
+        <div class="al-modal-card al-modal-narrow">
+            <div class="al-modal-hdr">
+                <strong id="al-test-title">Test endpoint</strong>
+                <button class="al-btn al-btn-icon" id="al-test-close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="al-modal-body">
+                <div class="al-field">
+                    <label>Capability</label>
+                    <select id="al-test-cap" class="control-select"></select>
+                </div>
+                <div class="al-field">
+                    <label>Prompt</label>
+                    <textarea id="al-test-prompt" class="al-code al-code-short" placeholder="A wooden supply crate"></textarea>
+                </div>
+                <div class="al-field">
+                    <label>Input asset (optional) — asset id or file path of an image / mesh</label>
+                    <input id="al-test-input" class="control-input" placeholder="ast_…  or  D:/art/concept.png">
+                </div>
+                <div class="al-msg" id="al-test-msg"></div>
+                <div id="al-test-result"></div>
+            </div>
+            <div class="al-modal-ftr">
+                <button class="al-btn al-btn-primary" id="al-test-run"><i class="fas fa-play"></i> Run test</button>
+            </div>
+        </div>
+    </div>
+</div>

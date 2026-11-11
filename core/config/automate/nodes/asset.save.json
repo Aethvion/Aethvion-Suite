@@ -1,0 +1,71 @@
+{
+  "type": "asset.save",
+  "label": "Save Asset",
+  "category": "Assets",
+  "icon": "fa-box-archive",
+  "color": "#fbbf24",
+  "description": "Store text, a file or an image in the Asset Library so it is kept, searchable and traceable.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Content",
+      "description": "Text, an object, a file path, a data URI or an existing asset."
+    },
+    {
+      "name": "name",
+      "label": "Name Override",
+      "description": "Overrides the configured asset name at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Asset",
+      "description": "The stored asset."
+    },
+    {
+      "name": "id",
+      "label": "Asset ID",
+      "description": "Library id of the asset."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the stored file."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Asset Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "quest_dialogue_draft"
+    },
+    {
+      "key": "format",
+      "label": "Text Format",
+      "type": "select",
+      "default": "txt",
+      "options": [
+        "txt",
+        "md",
+        "json",
+        "csv",
+        "yaml"
+      ]
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "",
+      "placeholder": "prop, medieval, draft (comma-separated)"
+    }
+  ]
+}

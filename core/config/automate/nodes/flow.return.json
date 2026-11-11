@@ -1,0 +1,31 @@
+{
+  "type": "flow.return",
+  "label": "Workflow Return",
+  "category": "Flow",
+  "icon": "fa-right-from-bracket",
+  "color": "#38bdf8",
+  "description": "A named result of this workflow. The calling workflow (or API caller) receives it.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Value",
+      "description": "The value to return."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "The same value, for chaining."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Return Name",
+      "type": "text",
+      "default": "result",
+      "placeholder": "result"
+    }
+  ]
+}

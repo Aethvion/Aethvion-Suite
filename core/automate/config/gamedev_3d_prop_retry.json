@@ -1,0 +1,111 @@
+{
+  "name": "3D Prop: Retry Until Pass",
+  "description": "Calls the 'Make Prop (sub-workflow)' up to 3 times. After a failed attempt the reviewer's feedback is fed into the next one. This is how loops work in Automate: the loop body is its own workflow.",
+  "tags": [
+    "gamedev",
+    "3d",
+    "loop",
+    "retry"
+  ],
+  "nodes": [
+    {
+      "id": "t",
+      "type": "trigger.manual",
+      "label": "Run",
+      "x": 60,
+      "y": 80,
+      "properties": {
+        "name": "Run"
+      }
+    },
+    {
+      "id": "brief",
+      "type": "input.text",
+      "label": "Prop Brief",
+      "x": 60,
+      "y": 260,
+      "properties": {
+        "value": "A stone well with a wooden bucket, medieval village style"
+      }
+    },
+    {
+      "id": "loop",
+      "type": "flow.retry_until",
+      "label": "Retry Until Pass",
+      "x": 380,
+      "y": 120,
+      "properties": {
+        "workflow": "Make Prop (sub-workflow)",
+        "max_attempts": 3,
+        "input_name": "input",
+        "pass_name": "passed",
+        "feedback_name": "feedback",
+        "variables": ""
+      }
+    },
+    {
+      "id": "ok",
+      "type": "output.display",
+      "label": "Approved Model",
+      "x": 720,
+      "y": 40,
+      "properties": {}
+    },
+    {
+      "id": "tries",
+      "type": "output.display",
+      "label": "Attempts Used",
+      "x": 720,
+      "y": 240,
+      "properties": {}
+    },
+    {
+      "id": "bad",
+      "type": "output.display",
+      "label": "Gave Up: Last Feedback",
+      "x": 720,
+      "y": 440,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "t",
+      "sourcePort": "trigger",
+      "targetNodeId": "loop",
+      "targetPort": "__trigger__"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "loop",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "loop",
+      "sourcePort": "pass",
+      "targetNodeId": "ok",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c4",
+      "sourceNodeId": "loop",
+      "sourcePort": "attempts",
+      "targetNodeId": "tries",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c5",
+      "sourceNodeId": "loop",
+      "sourcePort": "fail",
+      "targetNodeId": "bad",
+      "targetPort": "in"
+    }
+  ],
+  "requires": [
+    "gamedev_make_prop_sub"
+  ]
+}

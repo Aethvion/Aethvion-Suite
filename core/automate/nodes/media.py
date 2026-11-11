@@ -57,7 +57,11 @@ def action_ocr(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         }
 
     try:
-        if image_input.startswith("data:"):
+        from core.assets import values as _values  # noqa: PLC0415
+        _asset_path = _values.local_path(inputs.get("image") or inputs.get("path"))
+        if _asset_path:
+            img = Image.open(_asset_path)
+        elif image_input.startswith("data:"):
             import io as _io            # noqa: PLC0415
             import base64 as _b64       # noqa: PLC0415
             _header, b64data = image_input.split(",", 1)
@@ -190,20 +194,15 @@ def ai_analyze_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     if not image_input:
         return {"out": "", "error": "ai.analyze_image: No image path configured"}
 
-    # Load image bytes — support both file path and pre-loaded base64 data URI
-    try:
-        if image_input.startswith("data:"):
-            import base64 as _b64  # noqa: PLC0415
-            # data:<mime>;base64,<data>
-            header, b64data = image_input.split(",", 1)
-            mime_type   = header.split(";")[0].split(":")[1]
-            image_bytes = _b64.b64decode(b64data)
-        else:
-            mime_type   = _MIME_MAP.get(Path(image_input).suffix.lower(), "image/jpeg")
-            with open(image_input, "rb") as fh:
-                image_bytes = fh.read()
-    except Exception as exc:
-        return {"out": "", "error": f"Could not load image: {exc}"}
+    # Load image bytes: asset ref / asset id / file path / data URI
+    from core.assets import values as _values  # noqa: PLC0415
+    raw_image = inputs.get("image") if inputs.get("image") not in (None, "") else image_input
+    media = _values.read_media(raw_image)
+    if not media:
+        return {"out": "", "error": "Could not load image (expected an image asset, file path or data URI)"}
+    image_bytes, mime_type, _ext = media
+    if not mime_type.startswith("image/"):
+        mime_type = _MIME_MAP.get("." + _ext, "image/jpeg")
 
     pm   = _get_pm()
     resp = pm.call_with_failover(
@@ -225,53 +224,63 @@ def ai_analyze_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
 # Image generation
 
 def ai_generate_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """Generate an image with any image endpoint in the Model Hub.
+
+    Local checkpoints, SD WebUI, cloud models and custom endpoints are all selectable.
+    The result is stored in the Asset Library; when a Save Path is set the file is also
+    copied there (the behaviour this node always had).
+    """
+    from core.modelhub import hub  # noqa: PLC0415
+
     p            = node.get("properties", {})
-    prompt       = _to_str(inputs.get("in", "")).strip()
+    prompt       = _to_str(inputs.get("in", "")).strip() or str(p.get("prompt", "") or "").strip()
     model_id     = _to_str(inputs.get("model") or p.get("model",
                             "imagen-3.0-generate-002")).strip()
     save_path    = _to_str(inputs.get("path") or p.get("path", "")).strip()
     aspect_ratio = str(p.get("aspect_ratio", "1:1"))
+    empty        = {"out": "", "path": "", "image": None, "asset": None, "count": 0}
 
     if not prompt:
-        return {"out": "", "path": "", "count": 0, "error": "No prompt provided"}
+        return {**empty, "error": "No prompt provided"}
 
-    pm              = _get_pm()
-    google_provider = getattr(pm, "providers", {}).get("google_ai")
-    if not google_provider:
-        return {"out": "", "path": "", "count": 0,
-                "error": "Google AI provider not configured — image generation requires Google AI"}
+    params: dict[str, Any] = {"aspect_ratio": aspect_ratio}
+    size = {"1:1": "1024x1024", "16:9": "1344x768", "9:16": "768x1344",
+            "4:3": "1152x896", "3:4": "896x1152"}.get(aspect_ratio)
+    if size:
+        params["size"] = size
 
-    try:
-        resp = google_provider.generate_image(
-            prompt=prompt,
-            trace_id=f"automate-imggen-{uuid.uuid4().hex[:8]}",
-            model=model_id,
-            aspect_ratio=aspect_ratio,
-        )
-    except Exception as exc:
-        return {"out": "", "path": "", "count": 0, "error": str(exc)}
+    result = hub.invoke(
+        model_id, "image.generate",
+        prompt=prompt,
+        negative_prompt=_to_str(inputs.get("negative_prompt") or p.get("negative_prompt", "")).strip(),
+        image=inputs.get("image"),
+        params=params,
+        source=ctx.asset_source(node),
+        cancel=lambda: ctx.cancelled,
+        log=lambda m: ctx._info(f"    {m}"),
+    )
+    if not result.ok or not result.assets:
+        return {**empty, "error": result.error or "Image generation failed"}
 
-    if not resp.success:
-        return {"out": "", "path": "", "count": 0,
-                "error": resp.error or "Image generation failed"}
-
-    images_bytes: list = resp.metadata.get("images", []) if resp.metadata else []
-    if not images_bytes:
-        return {"out": "", "path": "", "count": 0,
-                "error": "No image data returned from provider"}
-
-    if not save_path:
-        ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_path = str(Path(tempfile.gettempdir()) / f"automate_gen_{ts}.png")
-
-    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(save_path, "wb") as fh:
-        fh.write(images_bytes[0])
+    ref      = result.refs[0]
+    out_path = ref["path"]
+    if save_path:
+        try:
+            target = Path(save_path)
+            if target.is_dir() or not target.suffix:
+                target = target / f"{ref['name']}.{ref['ext']}"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(Path(ref["path"]).read_bytes())
+            out_path = str(target)
+        except OSError as exc:
+            return {**empty, "error": f"Image generated but could not be saved to '{save_path}': {exc}"}
 
     return {
-        "out":   save_path,
-        "path":  save_path,
-        "count": len(images_bytes),
+        "out":   out_path,
+        "path":  out_path,
+        "image": ref,
+        "asset": ref,
+        "count": len(result.assets),
         "error": "",
     }
 

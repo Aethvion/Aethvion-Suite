@@ -1,0 +1,108 @@
+{
+  "type": "flow.retry_until",
+  "label": "Retry Until Pass",
+  "category": "Flow",
+  "icon": "fa-rotate",
+  "color": "#38bdf8",
+  "description": "Run a workflow again and again until its 'passed' return is true: generate, verify, and try again with the reviewer's feedback. Each attempt receives 'attempt' and 'feedback' variables.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Passed to the workflow as its 'input' variable."
+    },
+    {
+      "name": "variables",
+      "label": "Variables",
+      "description": "Object of extra named values passed to every attempt."
+    },
+    {
+      "name": "workflow",
+      "label": "Workflow Override",
+      "description": "Workflow id or name, overriding the configured one."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "pass",
+      "label": "Pass",
+      "description": "The result, when an attempt passed."
+    },
+    {
+      "name": "fail",
+      "label": "Fail",
+      "description": "The last result, when no attempt passed."
+    },
+    {
+      "name": "out",
+      "label": "Result",
+      "description": "The last attempt's result, passed or not."
+    },
+    {
+      "name": "passed",
+      "label": "Passed",
+      "description": "true / false."
+    },
+    {
+      "name": "attempts",
+      "label": "Attempts",
+      "description": "How many attempts were made."
+    },
+    {
+      "name": "feedback",
+      "label": "Feedback",
+      "description": "The last reviewer feedback."
+    },
+    {
+      "name": "returns",
+      "label": "All Returns",
+      "description": "Every value the last attempt returned."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "workflow",
+      "label": "Workflow",
+      "type": "model_select",
+      "source": "/api/automate/workflow-options",
+      "default": "",
+      "placeholder": "Select a workflow…"
+    },
+    {
+      "key": "max_attempts",
+      "label": "Max Attempts",
+      "type": "number",
+      "default": 3
+    },
+    {
+      "key": "input_name",
+      "label": "Input Variable Name",
+      "type": "text",
+      "default": "input"
+    },
+    {
+      "key": "pass_name",
+      "label": "Pass Return Name",
+      "type": "text",
+      "default": "passed"
+    },
+    {
+      "key": "feedback_name",
+      "label": "Feedback Return Name",
+      "type": "text",
+      "default": "feedback"
+    },
+    {
+      "key": "variables",
+      "label": "Variables (JSON)",
+      "type": "code",
+      "default": "",
+      "placeholder": "{\"style\": \"low-poly\"}"
+    }
+  ]
+}

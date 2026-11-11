@@ -1,0 +1,48 @@
+{
+  "template": true,
+  "id": "hosted-3d-async-job",
+  "name": "Hosted 3D API (submit job, poll, download)",
+  "description": "Pattern for hosted text-to-3D / image-to-3D / texturing services that work as jobs: one request starts a task, a second is polled until it finishes, and the result is a download link. The URLs and field names below are PLACEHOLDERS: replace them with the ones from your provider's API reference before use.",
+  "capabilities": [
+    "mesh.generate"
+  ],
+  "adapter": "http",
+  "output": {
+    "kind": "mesh",
+    "ext": "glb"
+  },
+  "http": {
+    "method": "POST",
+    "url": "https://api.example-3d-provider.com/v1/text-to-3d",
+    "headers": {
+      "Authorization": "Bearer ${HOSTED_3D_API_KEY}"
+    },
+    "body": {
+      "prompt": "{{prompt}}",
+      "image_url": "{{image_data_uri}}"
+    },
+    "poll": {
+      "method": "GET",
+      "url": "https://api.example-3d-provider.com/v1/text-to-3d/{{response.id}}",
+      "status_path": "status",
+      "progress_path": "progress",
+      "done": [
+        "SUCCEEDED",
+        "succeeded",
+        "completed"
+      ],
+      "failed": [
+        "FAILED",
+        "failed",
+        "CANCELED"
+      ],
+      "error_path": "error.message",
+      "interval": 4,
+      "timeout": 1200
+    },
+    "result": {
+      "type": "url",
+      "path": "model_urls.glb"
+    }
+  }
+}

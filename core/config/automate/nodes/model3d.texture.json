@@ -1,0 +1,102 @@
+{
+  "type": "model3d.texture",
+  "label": "Texture 3D Model",
+  "category": "Models",
+  "icon": "fa-fill-drip",
+  "color": "#f472b6",
+  "description": "Texture (or re-texture) a mesh from a style prompt and/or a reference image using any texturing endpoint.",
+  "inputs": [
+    {
+      "name": "mesh",
+      "label": "Mesh",
+      "description": "The 3D model to texture."
+    },
+    {
+      "name": "prompt",
+      "label": "Style Prompt",
+      "description": "Description of the surface / material / style."
+    },
+    {
+      "name": "image",
+      "label": "Reference Image",
+      "description": "Optional style or concept reference."
+    },
+    {
+      "name": "params",
+      "label": "Parameters",
+      "description": "Extra parameters as a JSON object, merged over the node's own parameters."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model endpoint at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "mesh",
+      "label": "Textured Mesh",
+      "description": "The textured 3D model asset."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the mesh file."
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "description": "URL the mesh is served from inside the Suite."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "endpoint",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/modelhub/models?capability=mesh.texture",
+      "default": "",
+      "placeholder": "Select a texturing model…"
+    },
+    {
+      "key": "prompt",
+      "label": "Style Prompt",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Used when nothing is wired into Style Prompt"
+    },
+    {
+      "key": "seed",
+      "label": "Seed",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = model default)"
+    },
+    {
+      "key": "params",
+      "label": "Parameters (JSON)",
+      "type": "code",
+      "default": "",
+      "placeholder": "{\"seed\": 42}"
+    },
+    {
+      "key": "name",
+      "label": "Asset Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = named from the prompt)"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "",
+      "placeholder": "prop, medieval, draft (comma-separated)"
+    }
+  ]
+}

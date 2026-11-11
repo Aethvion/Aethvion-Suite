@@ -1,0 +1,89 @@
+{
+  "type": "mesh.inspect",
+  "label": "Inspect Mesh",
+  "category": "Models",
+  "icon": "fa-ruler-combined",
+  "color": "#f472b6",
+  "description": "Measure a 3D model (triangles, UVs, materials, textures, size) and check it against budgets. No AI involved: these are facts.",
+  "inputs": [
+    {
+      "name": "mesh",
+      "label": "Mesh",
+      "description": "The 3D model to inspect (.glb and .obj are measured in detail)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "pass",
+      "label": "Pass",
+      "description": "The mesh, when it meets every enabled check."
+    },
+    {
+      "name": "fail",
+      "label": "Fail",
+      "description": "The mesh, when a check failed."
+    },
+    {
+      "name": "summary",
+      "label": "Summary",
+      "description": "Readable report. Feed it to an AI node or a Verify node as context."
+    },
+    {
+      "name": "stats",
+      "label": "Stats",
+      "description": "All measurements as an object."
+    },
+    {
+      "name": "triangles",
+      "label": "Triangles",
+      "description": "Triangle count."
+    },
+    {
+      "name": "texture",
+      "label": "First Texture",
+      "description": "The first texture image embedded in the mesh, as an image asset."
+    },
+    {
+      "name": "textures",
+      "label": "Textures",
+      "description": "All embedded texture images."
+    },
+    {
+      "name": "issues",
+      "label": "Issues",
+      "description": "Which checks failed, one per line."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "max_triangles",
+      "label": "Max Triangles",
+      "type": "number",
+      "default": 0,
+      "placeholder": "0 = no limit"
+    },
+    {
+      "key": "require_uvs",
+      "label": "Require UVs",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "require_textures",
+      "label": "Require Textures",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "extract_textures",
+      "label": "Extract Embedded Textures",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

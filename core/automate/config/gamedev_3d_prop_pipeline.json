@@ -1,0 +1,183 @@
+{
+  "name": "3D Prop Pipeline",
+  "description": "Brief -> concept image -> 3D model -> textures -> mesh checks. Each step can use a different model. Runs out of the box with the built-in demo endpoints (placeholder box + checker texture). Open each Models node and pick a real model to make it produce real assets.",
+  "tags": [
+    "gamedev",
+    "3d",
+    "models",
+    "starter"
+  ],
+  "nodes": [
+    {
+      "id": "t",
+      "type": "trigger.manual",
+      "label": "Run",
+      "x": 60,
+      "y": 80,
+      "properties": {
+        "name": "Run"
+      }
+    },
+    {
+      "id": "brief",
+      "type": "input.text",
+      "label": "Prop Brief",
+      "x": 60,
+      "y": 260,
+      "properties": {
+        "value": "A weathered wooden supply crate with iron corner brackets, stylised, game-ready"
+      }
+    },
+    {
+      "id": "concept",
+      "type": "ai.generate_image",
+      "label": "Concept Art",
+      "x": 380,
+      "y": 80,
+      "properties": {
+        "model": "demo:image",
+        "aspect_ratio": "1:1",
+        "path": ""
+      }
+    },
+    {
+      "id": "gen",
+      "type": "model3d.generate",
+      "label": "Generate 3D Model",
+      "x": 700,
+      "y": 80,
+      "properties": {
+        "endpoint": "demo:mesh",
+        "prompt": "",
+        "seed": "",
+        "params": "",
+        "name": "",
+        "tags": "prop"
+      }
+    },
+    {
+      "id": "tex",
+      "type": "model3d.texture",
+      "label": "Texture Model",
+      "x": 1020,
+      "y": 80,
+      "properties": {
+        "endpoint": "demo:texture",
+        "prompt": "",
+        "seed": "",
+        "params": "",
+        "name": "",
+        "tags": "prop, textured"
+      }
+    },
+    {
+      "id": "check",
+      "type": "mesh.inspect",
+      "label": "Mesh Checks",
+      "x": 1340,
+      "y": 80,
+      "properties": {
+        "max_triangles": 20000,
+        "require_uvs": true,
+        "require_textures": true,
+        "extract_textures": true
+      }
+    },
+    {
+      "id": "ok",
+      "type": "output.display",
+      "label": "Approved Model",
+      "x": 1660,
+      "y": 40,
+      "properties": {}
+    },
+    {
+      "id": "report",
+      "type": "output.display",
+      "label": "Mesh Report",
+      "x": 1660,
+      "y": 240,
+      "properties": {}
+    },
+    {
+      "id": "bad",
+      "type": "output.display",
+      "label": "Rejected: Issues",
+      "x": 1660,
+      "y": 440,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "t",
+      "sourcePort": "trigger",
+      "targetNodeId": "concept",
+      "targetPort": "__trigger__"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "concept",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "concept",
+      "sourcePort": "image",
+      "targetNodeId": "gen",
+      "targetPort": "image"
+    },
+    {
+      "id": "ex_c4",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "gen",
+      "targetPort": "prompt"
+    },
+    {
+      "id": "ex_c5",
+      "sourceNodeId": "gen",
+      "sourcePort": "mesh",
+      "targetNodeId": "tex",
+      "targetPort": "mesh"
+    },
+    {
+      "id": "ex_c6",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "tex",
+      "targetPort": "prompt"
+    },
+    {
+      "id": "ex_c7",
+      "sourceNodeId": "tex",
+      "sourcePort": "mesh",
+      "targetNodeId": "check",
+      "targetPort": "mesh"
+    },
+    {
+      "id": "ex_c8",
+      "sourceNodeId": "check",
+      "sourcePort": "pass",
+      "targetNodeId": "ok",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c9",
+      "sourceNodeId": "check",
+      "sourcePort": "summary",
+      "targetNodeId": "report",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c10",
+      "sourceNodeId": "check",
+      "sourcePort": "fail",
+      "targetNodeId": "bad",
+      "targetPort": "in"
+    }
+  ]
+}

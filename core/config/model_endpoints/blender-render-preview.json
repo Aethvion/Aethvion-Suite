@@ -1,0 +1,38 @@
+{
+  "template": true,
+  "id": "blender-render-preview",
+  "name": "Blender: render preview image",
+  "description": "Runs Blender in the background to render a lit three-quarter view of a mesh. Wire the result into the Preview Image input of AI Verify so a vision model can judge how the model actually looks. Requires Blender installed and 'blender' on PATH.",
+  "capabilities": [
+    "mesh.render"
+  ],
+  "adapter": "command",
+  "requires": [
+    "mesh"
+  ],
+  "output": {
+    "kind": "image",
+    "ext": "png"
+  },
+  "params": [
+    {
+      "key": "resolution",
+      "type": "number",
+      "default": 768
+    }
+  ],
+  "command": {
+    "args": [
+      "blender",
+      "--background",
+      "--factory-startup",
+      "--python",
+      "{{scripts_dir}}/blender_render_preview.py",
+      "--",
+      "{{mesh_path}}",
+      "{{output_path}}",
+      "{{params.resolution}}"
+    ],
+    "timeout": 900
+  }
+}

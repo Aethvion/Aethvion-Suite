@@ -20,6 +20,7 @@
         'photo':             { label: 'Photo',          icon: 'fas fa-image' },
         'audio':             { label: 'Audio',          icon: 'fas fa-microphone' },
         '3d-gen':            { label: '3D Workspace',   icon: 'fas fa-vector-square' },
+        'asset-library':     { label: 'Assets & Models', icon: 'fas fa-boxes-stacked' },
         'advaiconv':         { label: 'Adv. AI Conv.',  icon: 'fas fa-flask' },
         'researchboard':     { label: 'Directors',      icon: 'fas fa-balance-scale' },
         'arena':             { label: 'Arena',          icon: 'fas fa-shield-halved' },
@@ -62,7 +63,7 @@
             id: 'workspace',
             label: 'Workspace',
             icon: 'fas fa-briefcase',
-            tabs: ['agent-corp', 'schedule', 'photo', 'audio', '3d-gen'],
+            tabs: ['agent-corp', 'schedule', 'asset-library', 'photo', 'audio', '3d-gen'],
         },
         {
             id: 'research',

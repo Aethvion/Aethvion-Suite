@@ -1,0 +1,113 @@
+{
+  "name": "Batch Props (For Each)",
+  "description": "Turns a list of prop ideas into checked 3D models, two at a time, by calling 'Make Prop (sub-workflow)' once per line. Every model lands in the Asset Library tagged and traceable.",
+  "tags": [
+    "gamedev",
+    "3d",
+    "loop",
+    "batch"
+  ],
+  "nodes": [
+    {
+      "id": "t",
+      "type": "trigger.manual",
+      "label": "Run",
+      "x": 60,
+      "y": 80,
+      "properties": {
+        "name": "Run"
+      }
+    },
+    {
+      "id": "list",
+      "type": "input.list",
+      "label": "Prop List",
+      "x": 60,
+      "y": 260,
+      "properties": {
+        "items": "A wooden supply crate\nAn iron-banded barrel\nA small treasure chest\nA stone well",
+        "trim": true,
+        "remove_empty": true
+      }
+    },
+    {
+      "id": "loop",
+      "type": "flow.for_each",
+      "label": "For Each Prop",
+      "x": 380,
+      "y": 120,
+      "properties": {
+        "workflow": "Make Prop (sub-workflow)",
+        "item_name": "input",
+        "parallel": 2,
+        "max_items": 20,
+        "stop_on_error": false,
+        "variables": ""
+      }
+    },
+    {
+      "id": "res",
+      "type": "output.display",
+      "label": "Models",
+      "x": 720,
+      "y": 40,
+      "properties": {}
+    },
+    {
+      "id": "cnt",
+      "type": "output.display",
+      "label": "Succeeded",
+      "x": 720,
+      "y": 240,
+      "properties": {}
+    },
+    {
+      "id": "err",
+      "type": "output.display",
+      "label": "Errors",
+      "x": 720,
+      "y": 440,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "t",
+      "sourcePort": "trigger",
+      "targetNodeId": "loop",
+      "targetPort": "__trigger__"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "list",
+      "sourcePort": "out",
+      "targetNodeId": "loop",
+      "targetPort": "items"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "loop",
+      "sourcePort": "results",
+      "targetNodeId": "res",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c4",
+      "sourceNodeId": "loop",
+      "sourcePort": "count",
+      "targetNodeId": "cnt",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c5",
+      "sourceNodeId": "loop",
+      "sourcePort": "errors",
+      "targetNodeId": "err",
+      "targetPort": "in"
+    }
+  ],
+  "requires": [
+    "gamedev_make_prop_sub"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "type": "asset.export",
+  "label": "Export Asset",
+  "category": "Assets",
+  "icon": "fa-file-export",
+  "color": "#fbbf24",
+  "description": "Copy an asset into a folder on disk, for example straight into your game project's Assets directory.",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Asset",
+      "description": "The asset to export."
+    },
+    {
+      "name": "folder",
+      "label": "Folder Override",
+      "description": "Overrides the configured target folder at runtime."
+    },
+    {
+      "name": "filename",
+      "label": "Filename Override",
+      "description": "Overrides the configured filename at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "path",
+      "label": "Exported Path",
+      "description": "Where the file was written."
+    },
+    {
+      "name": "out",
+      "label": "Asset",
+      "description": "The asset, passed through."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "target_dir",
+      "label": "Target Folder",
+      "type": "text",
+      "default": "",
+      "placeholder": "D:/GameDev/MyGame/Assets/Models",
+      "picker": "folder"
+    },
+    {
+      "key": "filename",
+      "label": "Filename",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = asset name)"
+    },
+    {
+      "key": "overwrite",
+      "label": "Overwrite Existing",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

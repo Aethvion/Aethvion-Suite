@@ -14,13 +14,13 @@ const LocalModels = {
 
     // Provider brand metadata
     _PROVIDER_BRANDS: {
-        Google:    { accent: '#4285f4', bg: 'rgba(66,133,244,0.08)',   icon: 'fab fa-google',   desc: 'Gemma series â€” Google\'s efficient open models for local inference' },
-        Meta:      { accent: '#0082fb', bg: 'rgba(0,130,251,0.08)',    icon: 'fas fa-infinity',  desc: 'Llama series â€” Meta\'s open-weight foundation models' },
-        Microsoft: { accent: '#00a4ef', bg: 'rgba(0,164,239,0.08)',    icon: 'fab fa-windows',  desc: 'Phi series â€” small but highly capable language models' },
-        Alibaba:   { accent: '#ff6a00', bg: 'rgba(255,106,0,0.08)',    icon: 'fas fa-cloud',    desc: 'Qwen series â€” multilingual models from Alibaba Cloud' },
-        DeepSeek:  { accent: '#1a56db', bg: 'rgba(26,86,219,0.08)',    icon: 'fas fa-water',    desc: 'DeepSeek â€” advanced reasoning and code-focused models' },
-        NVIDIA:    { accent: '#76b900', bg: 'rgba(118,185,0,0.08)',    icon: 'fas fa-bolt',     desc: 'NVIDIA â€” models optimised for local GPU inference' },
-        Mistral:   { accent: '#f97316', bg: 'rgba(249,115,22,0.08)',   icon: 'fas fa-wind',     desc: 'Mistral AI â€” efficient open models from Europe' },
+        Google:    { accent: '#4285f4', bg: 'rgba(66,133,244,0.08)',   icon: 'fab fa-google',   desc: 'Gemma series — Google\'s efficient open models for local inference' },
+        Meta:      { accent: '#0082fb', bg: 'rgba(0,130,251,0.08)',    icon: 'fas fa-infinity',  desc: 'Llama series — Meta\'s open-weight foundation models' },
+        Microsoft: { accent: '#00a4ef', bg: 'rgba(0,164,239,0.08)',    icon: 'fab fa-windows',  desc: 'Phi series — small but highly capable language models' },
+        Alibaba:   { accent: '#ff6a00', bg: 'rgba(255,106,0,0.08)',    icon: 'fas fa-cloud',    desc: 'Qwen series — multilingual models from Alibaba Cloud' },
+        DeepSeek:  { accent: '#1a56db', bg: 'rgba(26,86,219,0.08)',    icon: 'fas fa-water',    desc: 'DeepSeek — advanced reasoning and code-focused models' },
+        NVIDIA:    { accent: '#76b900', bg: 'rgba(118,185,0,0.08)',    icon: 'fas fa-bolt',     desc: 'NVIDIA — models optimised for local GPU inference' },
+        Mistral:   { accent: '#f97316', bg: 'rgba(249,115,22,0.08)',   icon: 'fas fa-wind',     desc: 'Mistral AI — efficient open models from Europe' },
         Other:     { accent: '#6366f1', bg: 'rgba(99,102,241,0.08)',   icon: 'fas fa-cube',     desc: 'Additional models available for local inference' },
     },
 
@@ -307,7 +307,7 @@ const LocalModels = {
             
             <div class="hub-model-info">
                 <h3 style="font-family:'Fira Code', monospace; font-size:0.8rem; word-break:break-all;">${m.filename}</h3>
-                <p>${m.arch} Architecture Â· ${(m.size_mb/1024).toFixed(1)} GB</p>
+                <p>${m.arch} Architecture · ${(m.size_mb/1024).toFixed(1)} GB</p>
             </div>
 
             <div class="hub-tags">
@@ -564,7 +564,7 @@ const LocalModels = {
             const badge = card.querySelector('.installed-badge');
             const deleteBtn = card.querySelector('.delete-btn');
 
-            // Skip unsupported cards â€” they have no install button
+            // Skip unsupported cards — they have no install button
             if (!installBtn) return;
 
             const installAction = installBtn.getAttribute('onclick');
@@ -593,7 +593,7 @@ const LocalModels = {
 
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Startingâ€¦';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
         }
 
         // Inject (or reuse) progress panel inside the card
@@ -603,7 +603,7 @@ const LocalModels = {
             prog.className = 'model-dl-progress';
             prog.innerHTML = `
                 <div class="model-dl-row">
-                    <span class="model-dl-label">Connectingâ€¦</span>
+                    <span class="model-dl-label">Connecting…</span>
                     <span class="model-dl-pct">0%</span>
                 </div>
                 <div class="model-dl-bar-wrap">
@@ -664,7 +664,7 @@ const LocalModels = {
                     } else if (msg.pct !== undefined) {
                         if (dlBar)   dlBar.style.width    = msg.pct + '%';
                         if (dlPct)   dlPct.textContent    = msg.pct + '%';
-                        if (dlLabel) dlLabel.textContent  = 'Downloadingâ€¦';
+                        if (dlLabel) dlLabel.textContent  = 'Downloading…';
                         if (dlSize && msg.downloaded_mb)
                             dlSize.textContent = `${msg.downloaded_mb} MB / ${msg.total_mb} MB`;
                         if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg.pct}%`;
@@ -752,7 +752,7 @@ const LocalModels = {
 
             let html = '';
             if (gpu.cuda_available && gpu.gpu_name) {
-                html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-check-circle"></i> ${gpu.gpu_name} Â· ${gpu.vram_gb} GB VRAM</span>`;
+                html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-check-circle"></i> ${gpu.gpu_name} · ${gpu.vram_gb} GB VRAM</span>`;
             } else {
                 html += `<span class="gpu-badge gpu-badge-off"><i class="fas fa-microchip"></i> No CUDA GPU detected</span>`;
             }
@@ -986,7 +986,7 @@ const LocalModels = {
             });
             if (r.ok) {
                 if (saveStatus) {
-                    saveStatus.textContent = 'âœ“ Saved â€” takes effect on next model load';
+                    saveStatus.textContent = '✓ Saved — takes effect on next model load';
                     setTimeout(() => { saveStatus.textContent = ''; }, 4000);
                 }
                 showNotification('GPU config saved', 'success');
@@ -1022,7 +1022,7 @@ const LocalModels = {
                     <span class="gpu-badge gpu-badge-off"><i class="fas fa-circle"></i> Ollama not running</span>
                     <span class="gpu-badge-hint">
                         <a href="https://ollama.com/download" target="_blank" style="color:var(--primary)">Download Ollama</a>
-                        â€” install it and run <code>ollama serve</code>, then refresh.
+                        — install it and run <code>ollama serve</code>, then refresh.
                     </span>`;
                 if (modelsSection) modelsSection.style.display = 'none';
                 return;
@@ -1106,7 +1106,7 @@ const LocalModels = {
         return `<div class="ollama-model-card ${m.isReg ? 'ollama-registered' : ''}" id="ollama-card-${CSS.escape(m.name)}">
             <div class="ollama-model-name">
                 ${m.name}
-                <div style="font-size:0.65rem; font-weight:400; color:var(--text-tertiary); margin-top:0.1rem;">${m.arch} ${m.bsize ? `â€¢ ${m.bsize}B` : ''}</div>
+                <div style="font-size:0.65rem; font-weight:400; color:var(--text-tertiary); margin-top:0.1rem;">${m.arch} ${m.bsize ? `• ${m.bsize}B` : ''}</div>
             </div>
             <div class="ollama-model-btns">
                 <button class="action-btn ${m.isReg ? 'success' : 'primary'} sm-btn"
@@ -1212,7 +1212,7 @@ const LocalModels = {
         const model = this._suggestions.find(m => m.id === modelId);
         if (!model) { panel.innerHTML = '<div class="sug-info-content">Model not found.</div>'; return; }
 
-        panel.innerHTML = `<div class="sug-info-content sug-info-loading"><i class="fas fa-spinner fa-spin"></i> Asking AI about compatibility with your hardwareâ€¦</div>`;
+        panel.innerHTML = `<div class="sug-info-content sug-info-loading"><i class="fas fa-spinner fa-spin"></i> Asking AI about compatibility with your hardware…</div>`;
 
         try {
             const res = await fetch('/api/registry/local/model-info-query', {
@@ -1251,7 +1251,7 @@ const LocalModels = {
 
         if (progEl) progEl.style.display = '';
         if (barEl)  { barEl.style.width = '0%'; barEl.className = 'model-dl-bar'; }
-        if (labelEl) labelEl.textContent = 'Pullingâ€¦';
+        if (labelEl) labelEl.textContent = 'Pulling…';
         if (pctEl)   pctEl.textContent   = '0%';
 
         try {

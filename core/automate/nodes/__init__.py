@@ -8,15 +8,15 @@ Each entry maps a node type string to a handler function with signature:
 To add a new node type:
   1. Add its definition to _NODE_TYPES in automate_routes.py
   2. Add the handler function to the appropriate category file in this package
-  3. Register it in _REGISTRY below â€” one line, alphabetically within its group
+  3. Register it in _REGISTRY below — one line, alphabetically within its group
 """
 from __future__ import annotations
 
 from typing import Callable
 
 from . import (
-    actions, aethviondb, ai, data, globals as global_nodes,
-    inputs_outputs, integrations, logic, media, memory, triggers, ui,
+    actions, aethviondb, ai, assets, data, flow, globals as global_nodes,
+    inputs_outputs, integrations, logic, media, memory, models, triggers, ui,
 )
 
 # Handler registry
@@ -39,7 +39,7 @@ _REGISTRY: dict[str, Callable] = {
     "logic.switch":    logic.logic_switch,
     "logic.try_catch": logic.logic_try_catch,
 
-    # Global â€” public workflow parameters
+    # Global — public workflow parameters
     "global.text":      global_nodes.global_text,
     "global.number":    global_nodes.global_number,
     "global.toggle":    global_nodes.global_toggle,
@@ -89,6 +89,25 @@ _REGISTRY: dict[str, Callable] = {
     "ai.summarize":       ai.ai_summarize,
     "ai.text_to_speech":  media.ai_text_to_speech,
 
+    # Models (Model Hub) — any endpoint: LLM, image, 3D, HTTP API, command-line tool
+    "model.run":         models.model_run,
+    "model3d.generate":  models.model3d_generate,
+    "model3d.texture":   models.model3d_texture,
+    "mesh.inspect":      models.mesh_inspect,
+    "quality.verify":    models.quality_verify,
+
+    # Assets (Asset Library)
+    "asset.export": assets.asset_export,
+    "asset.load":   assets.asset_load,
+    "asset.save":   assets.asset_save,
+
+    # Flow — sub-workflows, loops, retries
+    "flow.for_each":    flow.flow_for_each,
+    "flow.input":       flow.flow_input,
+    "flow.retry_until": flow.flow_retry_until,
+    "flow.return":      flow.flow_return,
+    "flow.subworkflow": flow.flow_subworkflow,
+
     # Memory
     "memory.retrieve":        memory.memory_retrieve,
     "memory.search_semantic": memory.memory_search_semantic,
@@ -96,6 +115,7 @@ _REGISTRY: dict[str, Callable] = {
 
     # Inputs
     "input.file":   inputs_outputs.input_file,
+    "input.image":  assets.input_image,
     "input.list":   inputs_outputs.input_list,
     "input.number": inputs_outputs.input_number,
     "input.text":   inputs_outputs.input_text,
@@ -116,28 +136,28 @@ _REGISTRY: dict[str, Callable] = {
     "ui.custom_html":   ui.ui_custom_html,
 
 
-    # AethvionDB â€” search
+    # AethvionDB — search
     "aethviondb.search":                    aethviondb.aethviondb_search,
     "aethviondb.semantic_search":           aethviondb.aethviondb_semantic_search,
     "aethviondb.snapshot_search":           aethviondb.aethviondb_snapshot_search,
     "aethviondb.snapshot_semantic_search":  aethviondb.aethviondb_snapshot_semantic_search,
-    # AethvionDB â€” database
+    # AethvionDB — database
     "aethviondb.create_database":    aethviondb.aethviondb_create_database,
     "aethviondb.get_stats":          aethviondb.aethviondb_get_stats,
-    # AethvionDB â€” entity CRUD
+    # AethvionDB — entity CRUD
     "aethviondb.list_entities":      aethviondb.aethviondb_list_entities,
     "aethviondb.get_entity":         aethviondb.aethviondb_get_entity,
     "aethviondb.create_entity":      aethviondb.aethviondb_create_entity,
     "aethviondb.update_entity":      aethviondb.aethviondb_update_entity,
     "aethviondb.delete_entity":      aethviondb.aethviondb_delete_entity,
-    # AethvionDB â€” AI operations
+    # AethvionDB — AI operations
     "aethviondb.distill":            aethviondb.aethviondb_distill,
     "aethviondb.expand_entity":      aethviondb.aethviondb_expand_entity,
     "aethviondb.deepen_entity":      aethviondb.aethviondb_deepen_entity,
-    # AethvionDB â€” snapshots
+    # AethvionDB — snapshots
     "aethviondb.create_snapshot":    aethviondb.aethviondb_create_snapshot,
     "aethviondb.list_snapshots":     aethviondb.aethviondb_list_snapshots,
-    # AethvionDB â€” maintenance
+    # AethvionDB — maintenance
     "aethviondb.validate":           aethviondb.aethviondb_validate,
     "aethviondb.generate_vectors":   aethviondb.aethviondb_generate_vectors,
     "companion.ask":              integrations.companion_ask,

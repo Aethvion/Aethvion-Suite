@@ -1,0 +1,32 @@
+{
+  "type": "flow.input",
+  "label": "Workflow Input",
+  "category": "Flow",
+  "icon": "fa-right-to-bracket",
+  "color": "#38bdf8",
+  "description": "A named input of this workflow. Receives a value when the workflow is called as a sub-workflow or through the API. Unlike Global nodes it carries any type, including assets.",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Value",
+      "description": "The value passed in, or the default."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Input Name",
+      "type": "text",
+      "default": "input",
+      "placeholder": "input"
+    },
+    {
+      "key": "default",
+      "label": "Default Value",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Used when the caller passes nothing"
+    }
+  ]
+}

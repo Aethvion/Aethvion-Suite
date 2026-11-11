@@ -57,66 +57,143 @@ def get_free_port():
         s.bind(('', 0))
         return s.getsockname()[1]
 
-async def get_or_start_worker(model: str):
-    """Start the 3D model worker if not running."""
+def _worker_paths(model: str):
+    worker_dir = LOCAL_MODELS_3D / model.replace("-", "")
+    venv_python = (worker_dir / "venv" / "Scripts" / "python.exe" if os.name == "nt"
+                   else worker_dir / "venv" / "bin" / "python")
+    return worker_dir, venv_python, worker_dir / "run_server.py"
+
+
+def _worker_log_path(model: str) -> Path:
+    return LOGS_SYSTEM / f"{model}-worker.log"
+
+
+def _prepare_worker(model: str, worker_dir: Path) -> None:
+    """Bring an installed worker up to date before it starts.
+
+    Installs made by earlier versions can carry a stale run_server.py or (Trellis) source
+    patches that do not parse.  Refreshing them here means a fix to the Suite reaches
+    existing installs without a reinstall.  Never raises: a problem here is logged and
+    the worker is started anyway so its own error shows up in the health check.
+    """
+    try:
+        templates = Path(__file__).parent / "templates"
+        if model == "triposr":
+            wanted = (templates / "triposr_server.py").read_text(encoding="utf-8")
+        else:
+            wanted = ((templates / "tsr_server_template.py").read_text(encoding="utf-8")
+                      .replace("{MODEL_NAME}", model.title()).replace("{MODEL_ID}", model))
+        run_script = worker_dir / "run_server.py"
+        current = run_script.read_text(encoding="utf-8") if run_script.exists() else ""
+        if current.replace("\r\n", "\n") != wanted.replace("\r\n", "\n"):
+            run_script.write_text(wanted, encoding="utf-8")
+            logger.info(f"[3D] Updated {model} run_server.py to the current template")
+
+        if model == "trellis-2":
+            from . import trellis_patches  # noqa: PLC0415
+            repo_dir = worker_dir / model
+            if repo_dir.exists() and not trellis_patches.is_patched(repo_dir):
+                for line in trellis_patches.apply_sdpa_patches(repo_dir):
+                    logger.info(f"[3D] Trellis source patch: {line}")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[3D] Could not prepare {model} worker: {exc}")
+
+
+def _stop_worker_process(model: str) -> None:
+    proc = _WORKER_PROCESS.pop(model, None)
+    _WORKER_PORT.pop(model, None)
+    if proc and proc.poll() is None:
+        try:
+            proc.terminate()
+        except OSError:
+            pass
+
+
+def _start_worker_process(model: str):
+    """Start the worker process if it is not running. Returns (port, error)."""
     if model in _WORKER_PROCESS and _WORKER_PROCESS[model].poll() is None:
         return _WORKER_PORT[model], None
-        
-    worker_dir = LOCAL_MODELS_3D / model.replace("-", "")
-    venv_python = worker_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else worker_dir / "venv" / "bin" / "python"
-    server_script = worker_dir / "run_server.py"
-    
+
+    worker_dir, venv_python, server_script = _worker_paths(model)
     if not venv_python.exists():
-        return None, f"Worker environment not found at {venv_python}"
-        
+        return None, f"{model} is not installed (no virtual environment). Install it from the 3D Models tab."
+    _prepare_worker(model, worker_dir)
+    if not server_script.exists():
+        return None, f"{model}: run_server.py is missing. Reinstall the model from the 3D Models tab."
+
     port = get_free_port()
-    logger.info(f"[3D] Starting {model} worker on port {port}...")
-    
     try:
-        log_file_path = worker_dir / "worker.log"
-        log_file = open(log_file_path, "w", encoding='utf-8')
-        
+        LOGS_SYSTEM.mkdir(parents=True, exist_ok=True)
+        log_file = open(_worker_log_path(model), "w", encoding="utf-8")
         proc = subprocess.Popen(
             [str(venv_python), str(server_script), str(port)],
             cwd=str(worker_dir),
             stdout=log_file,
             stderr=subprocess.STDOUT,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
-            text=True
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            text=True,
         )
-        _WORKER_PROCESS[model] = proc
-        _WORKER_PORT[model] = port
-        
-        max_retries = 120
-        async with httpx.AsyncClient() as client:
-            for i in range(max_retries):
-                try:
-                    res = await client.get(f"http://127.0.0.1:{port}/health", timeout=1.0)
-                    if res.status_code == 200:
-                        res_data = res.json()
-                        status = res_data.get("status")
-                        if status == "online":
-                            logger.info(f"[3D] Worker {model} is ready.")
-                            return port, None
-                        elif status == "failed":
-                            err_msg = res_data.get("error", "Unknown loading error")
-                            logger.error(f"[3D] Worker {model} reported loading failure: {err_msg}")
-                            return None, f"Model failed to load: {err_msg}"
-                except (httpx.RequestError, asyncio.TimeoutError, OSError):
-                    pass
-
-                await asyncio.sleep(2.0)
-                
-                if proc.poll() is not None:
-                    log_file.close()
-                    error_out = log_file_path.read_text(errors='replace')
-                    logger.error(f"[3D] Worker {model} failed to start. Output:\n{error_out}")
-                    return None, f"Worker failed to start. Check worker.log"
-                    
-        return port, None
-    except Exception as e:
-        logger.error(f"[3D] Exception starting worker: {e}")
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[3D] Failed to start {model} worker: {e}")
         return None, str(e)
+    _WORKER_PROCESS[model] = proc
+    _WORKER_PORT[model]    = port
+    logger.info(f"[3D] {model} worker PID {proc.pid} started on port {port} (log: {_worker_log_path(model)})")
+    return port, None
+
+
+def _short_error(text: str) -> str:
+    """The last meaningful line of a traceback, for one-line error messages."""
+    lines = [ln.strip() for ln in (text or "").strip().splitlines() if ln.strip()]
+    return lines[-1] if lines else "unknown error"
+
+
+async def get_or_start_worker(model: str, wait_seconds: int = 600):
+    """Make sure the worker is running AND its model is loaded. Returns (port, error).
+
+    A worker left in the "failed" state by an earlier attempt is stopped and started
+    again, so fixing the cause and retrying works without restarting the Suite.
+    """
+    for attempt in (1, 2):
+        already_running = model in _WORKER_PROCESS and _WORKER_PROCESS[model].poll() is None
+        port, err = _start_worker_process(model)
+        if err:
+            return None, err
+        proc = _WORKER_PROCESS[model]
+
+        failure = ""
+        deadline = asyncio.get_event_loop().time() + wait_seconds
+        async with httpx.AsyncClient() as client:
+            while True:
+                if asyncio.get_event_loop().time() > deadline:
+                    return None, f"{model} did not finish loading within {wait_seconds}s (log: {_worker_log_path(model)})"
+                if proc.poll() is not None:
+                    try:
+                        tail = _worker_log_path(model).read_text(errors="replace")[-1500:]
+                    except OSError:
+                        tail = ""
+                    _stop_worker_process(model)
+                    return None, f"{model} worker exited while starting: {_short_error(tail)}"
+                try:
+                    res = await client.get(f"http://127.0.0.1:{port}/health", timeout=2.0)
+                    data = res.json() if res.status_code == 200 else {}
+                except (httpx.HTTPError, ValueError, OSError):
+                    data = {}
+                status = data.get("status")
+                if status == "online":
+                    return port, None
+                if status == "failed":
+                    failure = data.get("error", "") or "unknown loading error"
+                    logger.error("[3D] %s failed to load: %s", model, failure)
+                    _stop_worker_process(model)
+                    break
+                await asyncio.sleep(1.5)
+
+        # A worker that was already sitting in the failed state may predate a fix:
+        # start a fresh one once. A worker we just started and saw fail is final.
+        if not (already_running and attempt == 1):
+            return None, f"{model} failed to load: {_short_error(failure)} (full log: {_worker_log_path(model)})"
+    return None, f"{model} failed to load (log: {_worker_log_path(model)})"
 
 @router.post("/generate", response_model=ThreeDGenerationResponse)
 async def generate_3d_asset(req: ThreeDGenerationRequest):
@@ -130,6 +207,12 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
         # 1. Prepare Workspace & Worker
         workspace = get_workspace_manager()
         
+        if not req.input_image:
+            return ThreeDGenerationResponse(
+                success=False,
+                error=f"{req.model} builds a 3D model from a picture: connect a reference image "
+                      "(an Image node or an image generation step). A text prompt alone is not enough.")
+
         # Start/Get worker
         port, err = await get_or_start_worker(req.model)
         if err:
@@ -138,11 +221,11 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
         # 2. Call Worker for Generation
         logger.info(f"[{trace_id}] Routing request to worker on port {port}")
         
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=900.0) as client:
             worker_res = await client.post(
                 f"http://127.0.0.1:{port}/generate",
                 json={
-                    "image_base64": req.input_image,
+                    "image_base64": req.input_image.split(",", 1)[1] if req.input_image.startswith("data:") else req.input_image,
                     "prompt": req.prompt,
                     "seed": req.seed or 1,
                     "action": req.action
@@ -150,11 +233,20 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
             )
             
             if worker_res.status_code != 200:
-                return ThreeDGenerationResponse(success=False, error=f"Worker HTTP {worker_res.status_code}")
-            
+                try:
+                    detail = worker_res.json().get("detail", "")
+                except ValueError:
+                    detail = worker_res.text[:300]
+                return ThreeDGenerationResponse(
+                    success=False, error=f"{req.model} worker returned HTTP {worker_res.status_code}: {detail}")
+
             result_data = worker_res.json()
             if not result_data.get("success"):
-                return ThreeDGenerationResponse(success=False, error=result_data.get("error", "Unknown worker error"))
+                full = result_data.get("error", "Unknown worker error")
+                logger.error(f"[{trace_id}] {req.model} generation failed:\n{full}")
+                return ThreeDGenerationResponse(success=False, error=f"{req.model} generation failed: {_short_error(full)}")
+            if not result_data.get("glb_base64"):
+                return ThreeDGenerationResponse(success=False, error=f"{req.model} returned no mesh")
 
         # 3. Save Logic: Nested structure (YYYY-MM/trace_id/...)
         now = datetime.now()
@@ -349,45 +441,23 @@ async def launch_worker(model: str):
     Start the worker process and return immediately.
     The model loads in the background — poll /api/3d/health/{model} for status.
     """
-    # Already running — return its port right away
+    # A worker that is up but whose model failed to load is useless: replace it.
     if model in _WORKER_PROCESS and _WORKER_PROCESS[model].poll() is None:
-        return {"success": True, "port": _WORKER_PORT[model], "message": "Already running"}
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(f"http://127.0.0.1:{_WORKER_PORT[model]}/health", timeout=1.5)
+            if res.status_code == 200 and res.json().get("status") == "failed":
+                _stop_worker_process(model)
+            else:
+                return {"success": True, "port": _WORKER_PORT[model], "message": "Already running"}
+        except (httpx.HTTPError, ValueError, OSError):
+            return {"success": True, "port": _WORKER_PORT[model], "message": "Already running"}
 
-    worker_dir   = LOCAL_MODELS_3D / model.replace("-", "")
-    venv_python  = (worker_dir / "venv" / "Scripts" / "python.exe"
-                    if os.name == "nt"
-                    else worker_dir / "venv" / "bin" / "python")
-    server_script = worker_dir / "run_server.py"
-
-    if not venv_python.exists():
-        return {"success": False, "error": "Virtual environment not found — reinstall the model."}
-    if not server_script.exists():
-        return {"success": False, "error": "run_server.py missing — reinstall the model."}
-
-    port = get_free_port()
-    logger.info(f"[3D] Starting {model} worker on port {port}…")
-
-    try:
-        LOGS_SYSTEM.mkdir(parents=True, exist_ok=True)
-        log_file_path = LOGS_SYSTEM / f"{model}-worker.log"
-        log_file = open(log_file_path, "w", encoding="utf-8")
-
-        proc = subprocess.Popen(
-            [str(venv_python), str(server_script), str(port)],
-            cwd=str(worker_dir),
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            text=True,
-        )
-        _WORKER_PROCESS[model] = proc
-        _WORKER_PORT[model]    = port
-        logger.info(f"[3D] Worker PID {proc.pid} started — log: {log_file_path}")
-        return {"success": True, "port": port, "pid": proc.pid,
-                "message": "Worker started — loading model into VRAM"}
-    except Exception as e:
-        logger.error(f"[3D] Failed to start worker: {e}")
-        return {"success": False, "error": str(e)}
+    port, err = await asyncio.to_thread(_start_worker_process, model)
+    if err:
+        return {"success": False, "error": err}
+    return {"success": True, "port": port, "pid": _WORKER_PROCESS[model].pid,
+            "message": "Worker started — loading model into VRAM"}
 
 @router.get("/health/{model}")
 async def get_worker_health(model: str):
@@ -659,7 +729,7 @@ async def install_3d_model(model: str):
                     if line: yield f"data: {json.dumps({'line': line})}\n\n"
                 await proc_mc.wait()
                 if proc_mc.returncode != 0:
-                    yield f"data: {json.dumps({'line': 'Warning: torchmcubes build failed — mesh extraction will be unavailable.'})}\n\n"
+                    yield f"data: {json.dumps({'line': 'Note: torchmcubes could not be built (needs MSVC + CUDA toolkit). TripoSR will use the built-in CPU marching-cubes fallback instead.'})}\n\n"
                 else:
                     yield f"data: {json.dumps({'line': 'torchmcubes installed successfully.'})}\n\n"
 
@@ -888,74 +958,9 @@ async def install_3d_model(model: str):
 
                 # Attention Patches
                 yield f"data: {json.dumps({'line': 'Patching attention modules for SDPA support...'})}\n\n"
-                full_attn_patch = """
-    elif ATTN == 'sdpa':
-        if num_all_args == 1:
-            q, k, v = qkv.unbind(dim=1)
-        elif num_all_args == 2:
-            k, v = kv.unbind(dim=1)
-        out_list = []
-        q_start, kv_start = 0, 0
-        for i in range(len(q_seqlen)):
-            qi = q[q_start:q_start+q_seqlen[i]].transpose(0, 1).unsqueeze(0)
-            ki = k[kv_start:kv_start+kv_seqlen[i]].transpose(0, 1).unsqueeze(0)
-            vi = v[kv_start:kv_start+kv_seqlen[i]].transpose(0, 1).unsqueeze(0)
-            res = torch.nn.functional.scaled_dot_product_attention(qi, ki, vi)
-            out_list.append(res.squeeze(0).transpose(0, 1))
-            q_start += q_seqlen[i]
-            kv_start += kv_seqlen[i]
-        out = torch.cat(out_list, dim=0)
-"""
-                coll_patch = """
-        elif ATTN == 'sdpa':
-            q, k, v = qkv_feats.unbind(dim=2)
-            q = q.transpose(1, 2)
-            k = k.transpose(1, 2)
-            v = v.transpose(1, 2)
-            out = torch.nn.functional.scaled_dot_product_attention(q, k, v)
-            out = out.transpose(1, 2)
-"""
-                coll_varlen_patch = """
-        elif ATTN == 'sdpa':
-            q, k, v = qkv_feats.unbind(dim=1)
-            out_list = []
-            curr = 0
-            for slen in seq_lens:
-                qi = q[curr:curr+slen].transpose(0, 1).unsqueeze(0)
-                ki = k[curr:curr+slen].transpose(0, 1).unsqueeze(0)
-                vi = v[curr:curr+slen].transpose(0, 1).unsqueeze(0)
-                res = torch.nn.functional.scaled_dot_product_attention(qi, ki, vi)
-                out_list.append(res.squeeze(0).transpose(0, 1))
-                curr += slen
-            out = torch.cat(out_list, dim=0)
-"""
-                # 1. Patch sparse/__init__.py
-                si_file = repo_dir / "trellis" / "modules" / "sparse" / "__init__.py"
-                if si_file.exists():
-                    c = si_file.read_text(encoding='utf-8')
-                    if "'sdpa'" not in c:
-                        c = c.replace("['xformers', 'flash_attn']", "['xformers', 'flash_attn', 'sdpa']")
-                        si_file.write_text(c, encoding='utf-8')
-                
-                # 2. Patch full_attn.py
-                fa_file = repo_dir / "trellis" / "modules" / "sparse" / "attention" / "full_attn.py"
-                if fa_file.exists():
-                    c = fa_file.read_text(encoding='utf-8')
-                    if "'sdpa'" not in c:
-                        c = c.replace("import flash_attn", "import flash_attn\\nelif ATTN == 'sdpa':\\n    pass")
-                        c = c.replace("    else:", full_attn_patch + "    else:")
-                        fa_file.write_text(c, encoding='utf-8')
-
-                # 3. Patch others
-                for f in ["serialized_attn.py", "windowed_attn.py"]:
-                    target = repo_dir / "trellis" / "modules" / "sparse" / "attention" / f
-                    if target.exists():
-                        c = target.read_text(encoding='utf-8')
-                        if "'sdpa'" not in c:
-                            c = c.replace("import flash_attn", "import flash_attn\\nelif ATTN == 'sdpa':\\n    pass")
-                            c = c.replace("else:\\n            raise ValueError(f\\\"Unknown attention module: {ATTN}\\\")", coll_patch + "        else:\\n            raise ValueError(f\\\"Unknown attention module: {ATTN}\\\")")
-                            c = c.replace("max(seq_lens)) # [M, H, C]", "max(seq_lens)) # [M, H, C]" + coll_varlen_patch)
-                            target.write_text(c, encoding='utf-8')
+                from . import trellis_patches  # noqa: PLC0415
+                for _pl in trellis_patches.apply_sdpa_patches(repo_dir):
+                    yield f"data: {json.dumps({'line': '  ' + _pl})}\n\n"
 
             except Exception as e:
                 yield f"data: {json.dumps({'line': f'Warning: Attention patch failed: {e}'})}\n\n"

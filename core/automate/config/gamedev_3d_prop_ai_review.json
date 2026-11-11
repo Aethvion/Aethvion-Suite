@@ -1,0 +1,183 @@
+{
+  "name": "3D Prop Pipeline with AI Review",
+  "description": "Generate -> texture -> measure -> an AI reviewer judges the model against your criteria and routes it to Pass or Fail. Pick a reviewer model in the AI Verify node first (vision-capable models can also judge the textures). Runs out of the box with the built-in demo endpoints (placeholder box + checker texture). Open each Models node and pick a real model to make it produce real assets.",
+  "tags": [
+    "gamedev",
+    "3d",
+    "models",
+    "review"
+  ],
+  "nodes": [
+    {
+      "id": "t",
+      "type": "trigger.manual",
+      "label": "Run",
+      "x": 60,
+      "y": 80,
+      "properties": {
+        "name": "Run"
+      }
+    },
+    {
+      "id": "brief",
+      "type": "input.text",
+      "label": "Prop Brief",
+      "x": 60,
+      "y": 260,
+      "properties": {
+        "value": "A low-poly treasure chest with gold trim, hand-painted style"
+      }
+    },
+    {
+      "id": "gen",
+      "type": "model3d.generate",
+      "label": "Generate 3D Model",
+      "x": 380,
+      "y": 80,
+      "properties": {
+        "endpoint": "demo:mesh",
+        "prompt": "",
+        "seed": "",
+        "params": "",
+        "name": "",
+        "tags": "prop"
+      }
+    },
+    {
+      "id": "tex",
+      "type": "model3d.texture",
+      "label": "Texture Model",
+      "x": 700,
+      "y": 80,
+      "properties": {
+        "endpoint": "demo:texture",
+        "prompt": "",
+        "seed": "",
+        "params": "",
+        "name": "",
+        "tags": "prop, textured"
+      }
+    },
+    {
+      "id": "check",
+      "type": "mesh.inspect",
+      "label": "Measure Mesh",
+      "x": 1020,
+      "y": 80,
+      "properties": {
+        "max_triangles": 0,
+        "require_uvs": false,
+        "require_textures": false,
+        "extract_textures": true
+      }
+    },
+    {
+      "id": "verify",
+      "type": "quality.verify",
+      "label": "AI Review",
+      "x": 1340,
+      "y": 80,
+      "properties": {
+        "model": "",
+        "threshold": 70,
+        "criteria": "The model must match the brief given in the context. It must be game-ready: under 20,000 triangles, with UVs and a base-colour texture. The texture must fit the described style and contain no text or watermarks."
+      }
+    },
+    {
+      "id": "ok",
+      "type": "output.display",
+      "label": "Approved",
+      "x": 1660,
+      "y": 40,
+      "properties": {}
+    },
+    {
+      "id": "fb",
+      "type": "output.display",
+      "label": "Reviewer Feedback",
+      "x": 1660,
+      "y": 240,
+      "properties": {}
+    },
+    {
+      "id": "bad",
+      "type": "output.display",
+      "label": "Rejected",
+      "x": 1660,
+      "y": 440,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "t",
+      "sourcePort": "trigger",
+      "targetNodeId": "gen",
+      "targetPort": "__trigger__"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "gen",
+      "targetPort": "prompt"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "gen",
+      "sourcePort": "mesh",
+      "targetNodeId": "tex",
+      "targetPort": "mesh"
+    },
+    {
+      "id": "ex_c4",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "tex",
+      "targetPort": "prompt"
+    },
+    {
+      "id": "ex_c5",
+      "sourceNodeId": "tex",
+      "sourcePort": "mesh",
+      "targetNodeId": "check",
+      "targetPort": "mesh"
+    },
+    {
+      "id": "ex_c6",
+      "sourceNodeId": "tex",
+      "sourcePort": "mesh",
+      "targetNodeId": "verify",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c7",
+      "sourceNodeId": "brief",
+      "sourcePort": "out",
+      "targetNodeId": "verify",
+      "targetPort": "context"
+    },
+    {
+      "id": "ex_c8",
+      "sourceNodeId": "verify",
+      "sourcePort": "pass",
+      "targetNodeId": "ok",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c9",
+      "sourceNodeId": "verify",
+      "sourcePort": "feedback",
+      "targetNodeId": "fb",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c10",
+      "sourceNodeId": "verify",
+      "sourcePort": "fail",
+      "targetNodeId": "bad",
+      "targetPort": "in"
+    }
+  ]
+}

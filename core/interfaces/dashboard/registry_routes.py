@@ -151,7 +151,7 @@ async def update_env_key(data: Dict[str, Any], request: Request):
         # Reload into current process environment
         os.environ[key_name] = key_value
 
-        # Reinitialise providers so they pick up the new key immediately â€”
+        # Reinitialise providers so they pick up the new key immediately —
         # no restart required.
         providers_reloaded = False
         if hasattr(request.app.state, 'aether'):
@@ -1078,14 +1078,14 @@ async def get_gpu_status():
         "vram_gb": None,
     }
 
-    # 1 â€” Register CUDA DLL dirs so llama_cpp can load on Windows
+    # 1 — Register CUDA DLL dirs so llama_cpp can load on Windows
     try:
         from core.providers.local_provider import _register_cuda_dll_dirs
         _register_cuda_dll_dirs()
     except Exception:
         pass
 
-    # 2 â€” Check if CUDA llama-cpp build is active
+    # 2 — Check if CUDA llama-cpp build is active
     try:
         import llama_cpp
         result["llama_cpp_installed"] = True
@@ -1095,7 +1095,7 @@ async def get_gpu_status():
     except Exception:
         pass
 
-    # 2 â€” Detect GPU via nvidia-smi (works on Windows without torch)
+    # 2 — Detect GPU via nvidia-smi (works on Windows without torch)
     try:
         proc = subprocess.run(
             ["nvidia-smi",
@@ -1112,7 +1112,7 @@ async def get_gpu_status():
     except Exception:
         pass
 
-    # 3 â€” Fallback: torch (if nvidia-smi wasn't found / failed)
+    # 3 — Fallback: torch (if nvidia-smi wasn't found / failed)
     if not result["cuda_available"]:
         try:
             import torch

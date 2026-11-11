@@ -16,8 +16,21 @@ from __future__ import annotations
 import concurrent.futures
 import threading
 import time
+import uuid
 from datetime import datetime
 from typing import Any
+
+MAX_SUBWORKFLOW_DEPTH = 8
+
+
+class NodeSkipped(Exception):
+    """Raised by a node handler to say "I have nothing to do" — not an error.
+
+    Used when an input the node cannot work without never arrived because the step
+    that should have produced it failed or its branch was not taken.  The node is
+    marked skipped (with the message as the reason) and everything that depends only
+    on it is skipped too, instead of reporting a second, misleading error.
+    """
 
 
 class WorkflowExecutor:
@@ -29,7 +42,22 @@ class WorkflowExecutor:
         ctx._vars      — workflow-scoped variable store (dict, lives for one run)
         ctx._log       — execution log list (append via ctx._info/warn/error)
 
+    Also available to handlers:
+        ctx.run_id         — id of this run (shared by sub-workflow runs)
+        ctx.cancelled      — True once the run was cancelled; long handlers should poll it
+        ctx.asset_source(node) — lineage dict to attach to assets a node creates
+        ctx._returns       — values set by flow.return nodes (the workflow's outputs)
+
+    Branching: a node is skipped ("branch not taken") when it has wired data inputs and
+    none of them carries a value — the source port is None (logic.if / logic.switch /
+    logic.try_catch route this way), the source failed, or the source was itself
+    skipped.  Set workflow["settings"]["prune_dead_branches"] = False to restore the
+    old behaviour where such nodes still ran with empty inputs.
+
     Result dict keys:
+        run_id       — id of this run
+        cancelled    — True if the run was cancelled before finishing
+        returns      — {name: value} from flow.return nodes
         ok           — True if no node raised an unhandled exception
         fatal        — error message if the graph itself is broken (cycle, etc.)
         node_status  — {node_id: 'done' | 'error' | 'skipped'}
@@ -40,8 +68,18 @@ class WorkflowExecutor:
 
     def __init__(self, workflow: dict, variables: dict | None = None,
                  trigger_id: str | None = None,
-                 event_callback=None) -> None:
+                 event_callback=None,
+                 run_id: str | None = None,
+                 parent: "WorkflowExecutor | None" = None) -> None:
         self.workflow    = workflow
+        self.run_id: str = run_id or (parent.run_id if parent else f"run_{uuid.uuid4().hex[:12]}")
+        self.parent      = parent
+        self.depth: int  = (parent.depth + 1) if parent else 0
+        # Sub-workflow runs share the parent's cancel flag so one Stop ends everything.
+        self._cancel_event: threading.Event = parent._cancel_event if parent else threading.Event()
+        self._returns: dict[str, Any]       = {}
+        self._pruned: set[str]              = set()
+        self._prune_enabled: bool = (workflow.get("settings") or {}).get("prune_dead_branches", True) is not False
         self.nodes: dict[str, dict]          = {n["id"]: n for n in workflow.get("nodes", [])}
         self.connections: list[dict]         = workflow.get("connections", [])
 
@@ -70,6 +108,58 @@ class WorkflowExecutor:
 
         # Pre-compute topological order alongside adjacency maps (graph is static).
         self._topo_order: list[str] | None = self._topo_sort()
+
+    # Cancellation / lineage helpers (used by node handlers)
+
+    def cancel(self) -> None:
+        """Request the run to stop.  Running nodes finish; nothing new starts."""
+        self._cancel_event.set()
+
+    @property
+    def cancelled(self) -> bool:
+        return self._cancel_event.is_set()
+
+    def asset_source(self, node: dict) -> dict:
+        """Lineage info for assets created by *node* during this run."""
+        return {
+            "type":          "workflow",
+            "workflow_id":   self.workflow.get("id", ""),
+            "workflow_name": self.workflow.get("name", ""),
+            "run_id":        self.run_id,
+            "node_id":       node.get("id", ""),
+            "node_label":    node.get("label") or node.get("type", ""),
+        }
+
+    def _dead_reason(self, node_id: str, run_set: set[str]) -> str | None:
+        """Return why *node_id* should be skipped (no live data input), or None to run it."""
+        if not self._prune_enabled:
+            return None
+        live = dead = 0
+        upstream_failed = False
+        for conn in self.connections:
+            if conn.get("targetNodeId") != node_id:
+                continue
+            src_id = conn.get("sourceNodeId", "")
+            if src_id not in run_set or conn.get("targetPort") == "__trigger__":
+                continue
+            if self.nodes[src_id].get("type", "").startswith("trigger."):
+                continue
+            status = self._status.get(src_id)
+            if src_id in self._pruned:
+                dead += 1
+            elif status == "error":
+                dead += 1
+                upstream_failed = True
+            else:
+                outs = self._outputs.get(src_id) or {}
+                port = conn.get("sourcePort", "")
+                if port in outs and outs[port] is None:
+                    dead += 1
+                else:
+                    live += 1
+        if dead and not live:
+            return "an upstream node failed" if upstream_failed else "branch not taken"
+        return None
 
     # Public entry point
 
@@ -113,6 +203,7 @@ class WorkflowExecutor:
             self._warn("No nodes are connected to a trigger — nothing to execute.")
             return self._build_result()
 
+        run_set = set(run_order)
         completed_nodes = set()
         completed_lock  = threading.Lock()
         completed_cond  = threading.Condition(completed_lock)
@@ -123,6 +214,23 @@ class WorkflowExecutor:
             node  = self.nodes[node_id]
             label = node.get("label", node_id)
             t0    = time.perf_counter()
+
+            reason = "run cancelled" if self.cancelled else self._dead_reason(node_id, run_set)
+            if reason:
+                with completed_lock:
+                    self._status[node_id] = "skipped"
+                    self._pruned.add(node_id)
+                    self._outputs.pop(node_id, None)
+                self._info(f"  ⤼ {label} — skipped ({reason})")
+                self._emit({"type": "node_status", "node_id": node_id, "status": "skipped", "reason": reason})
+                with completed_lock:
+                    running_nodes.remove(node_id)
+                    completed_nodes.add(node_id)
+                    completed_cond.notify_all()
+                return
+
+            self._info(f"▶ {label}  [{node.get('type', 'unknown')}]")
+            self._emit({"type": "node_status", "node_id": node_id, "status": "running"})
 
             try:
                 inputs  = self._gather_inputs(node_id)
@@ -142,6 +250,13 @@ class WorkflowExecutor:
                     self._info(f"  ✓ {label}{timing_str}")
                 self._emit({"type": "node_status", "node_id": node_id,
                             "status": "done", "outputs": outputs or {}, "duration_ms": duration_ms, "error": None})
+            except NodeSkipped as skip:
+                with completed_lock:
+                    self._status[node_id] = "skipped"
+                    self._pruned.add(node_id)
+                    self._outputs.pop(node_id, None)
+                self._info(f"  \u2937 {label} \u2014 skipped ({skip})")
+                self._emit({"type": "node_status", "node_id": node_id, "status": "skipped", "reason": str(skip)})
             except Exception as exc:
                 duration_ms = round((time.perf_counter() - t0) * 1000, 1)
                 with completed_lock:
@@ -173,13 +288,7 @@ class WorkflowExecutor:
                     
                     # Submit ready nodes to executor
                     for node_id in ready_nodes:
-                        node  = self.nodes[node_id]
-                        label = node.get("label", node_id)
-                        ntype = node.get("type", "unknown")
                         self._status[node_id] = "running"
-                        self._info(f"▶ {label}  [{ntype}]")
-                        self._emit({"type": "node_status", "node_id": node_id, "status": "running"})
-                        
                         executor.submit(run_node_task, node_id)
                     
                     # Check for deadlocks (graph cycles - should not happen due to _topo_sort check)
@@ -192,7 +301,9 @@ class WorkflowExecutor:
                         completed_cond.wait()
 
         errors = sum(1 for s in self._status.values() if s == "error")
-        if errors:
+        if self.cancelled:
+            self._warn("Workflow cancelled.")
+        elif errors:
             self._warn(f"Workflow finished with {errors} error(s).")
         else:
             self._info("Workflow completed successfully.")
@@ -234,6 +345,10 @@ class WorkflowExecutor:
         """
         all_triggers = [nid for nid, n in self.nodes.items()
                         if n.get("type", "").startswith("trigger.")]
+
+        # A workflow called as a sub-workflow needs no trigger: the call is the trigger.
+        if not all_triggers and self.parent is not None:
+            return set(self.nodes)
 
         def _forward_bfs(seeds: list[str]) -> set[str]:
             visited: set[str] = set(seeds)
@@ -348,7 +463,10 @@ class WorkflowExecutor:
 
     def _build_result(self, fatal: str | None = None) -> dict:
         return {
-            "ok":             not (bool(self._errors) or fatal is not None),
+            "run_id":         self.run_id,
+            "cancelled":      self.cancelled,
+            "returns":        self._returns,
+            "ok":             not (bool(self._errors) or fatal is not None or self.cancelled),
             "fatal":          fatal,
             "node_status":    self._status,
             "node_durations": self._durations,
@@ -404,6 +522,10 @@ def _output_summary(outputs: dict | None) -> str:
     _TRIVIAL = frozenset({"[]", "{}", "null", "None"})
 
     def _fmt(port: str, s: str) -> str:
+        ref = outputs.get(port)
+        if isinstance(ref, dict) and ref.get("__asset__"):
+            return (f'[{port}] {ref.get("kind", "asset")} asset '
+                    f'"{ref.get("name", "")}.{ref.get("ext", "")}" ({ref.get("id", "")})')
         preview = s[:80].replace("\n", " ")
         return f'[{port}] "{preview}{"…" if len(s) > 80 else ""}"'
 

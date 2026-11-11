@@ -1,0 +1,143 @@
+{
+  "type": "model.run",
+  "label": "Run Model",
+  "category": "Models",
+  "icon": "fa-cubes-stacked",
+  "color": "#f472b6",
+  "description": "Run any model endpoint registered in the Model Hub: chat, image, 3D, audio, an HTTP API or a command-line tool.",
+  "inputs": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "description": "Text prompt / instruction for the model."
+    },
+    {
+      "name": "image",
+      "label": "Image",
+      "description": "Image input (asset, file path or data URI)."
+    },
+    {
+      "name": "mesh",
+      "label": "Mesh",
+      "description": "3D model input (asset or file path)."
+    },
+    {
+      "name": "audio",
+      "label": "Audio",
+      "description": "Audio input (asset or file path)."
+    },
+    {
+      "name": "system_prompt",
+      "label": "System Prompt",
+      "description": "System instructions (text models)."
+    },
+    {
+      "name": "params",
+      "label": "Parameters",
+      "description": "Extra parameters as a JSON object, merged over the node's own parameters."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model endpoint at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Result",
+      "description": "The main result: the produced asset, or the text for text models."
+    },
+    {
+      "name": "asset",
+      "label": "Asset",
+      "description": "The produced asset (image, mesh, audio, file), if any."
+    },
+    {
+      "name": "text",
+      "label": "Text",
+      "description": "Text returned by the model, if any."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the produced file."
+    },
+    {
+      "name": "all",
+      "label": "All Assets",
+      "description": "List of every asset produced when the model returns several."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "endpoint",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/modelhub/models",
+      "default": "",
+      "placeholder": "Select any model endpoint…"
+    },
+    {
+      "key": "capability",
+      "label": "Capability",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        "auto",
+        "text.generate",
+        "image.generate",
+        "image.edit",
+        "image.analyze",
+        "mesh.generate",
+        "mesh.texture",
+        "mesh.process",
+        "mesh.render",
+        "audio.speak",
+        "audio.generate",
+        "audio.transcribe",
+        "custom"
+      ]
+    },
+    {
+      "key": "prompt",
+      "label": "Prompt",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Used when nothing is wired into Prompt"
+    },
+    {
+      "key": "system_prompt",
+      "label": "System Prompt",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Optional (text models)"
+    },
+    {
+      "key": "params",
+      "label": "Parameters (JSON)",
+      "type": "code",
+      "default": "",
+      "placeholder": "{\"seed\": 42}"
+    },
+    {
+      "key": "name",
+      "label": "Asset Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = named from the prompt)"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "",
+      "placeholder": "prop, medieval, draft (comma-separated)"
+    }
+  ]
+}

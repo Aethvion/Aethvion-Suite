@@ -3,7 +3,7 @@ core/automate/automate_routes.py
 Isolated Automate module backend.
 Handles workflow CRUD, node type registry, model listing, and node test-execution.
 
-The AI execution endpoint (node/test) imports ProviderManager lazily â€” it uses only
+The AI execution endpoint (node/test) imports ProviderManager lazily — it uses only
 the call_with_failover() utility, sharing no workflow state with other modules.
 """
 from __future__ import annotations
@@ -478,21 +478,89 @@ async def delete_workflow(wf_id: str):
 
 
 class RunWorkflowBody(BaseModel):
-    variables:  Optional[dict] = None  # {name: value} â€” injected into global.* nodes at runtime
+    variables:  Optional[dict] = None  # {name: value} - injected into global.* / flow.input nodes at runtime
     trigger_id: Optional[str]  = None  # node id of the specific trigger to run from
+
+
+# Run registry + history
+#
+# Every run gets an id.  While it is executing it can be cancelled; when it finishes a
+# trimmed copy of the result is written to data/automate/runs/<run_id>.json so past runs
+# (status, log, outputs, produced assets) can be looked at again.
+
+_RUNS_DIR      = Path(__file__).parent.parent.parent / "data" / "automate" / "runs"
+_RUNS_KEEP     = 300          # newest N run records kept on disk
+_ACTIVE_RUNS: dict[str, Any] = {}   # run_id -> WorkflowExecutor
+
+
+def _trim_for_history(val: Any, depth: int = 0) -> Any:
+    """Make a node output safe to keep: drop inline binaries, cap long strings."""
+    if isinstance(val, str):
+        if val.startswith("data:") and len(val) > 256:
+            return f"[inline data, {len(val):,} chars - not stored]"
+        return val if len(val) <= 4000 else val[:4000] + f"... [+{len(val) - 4000:,} chars]"
+    if isinstance(val, dict):
+        if depth > 6:
+            return "[nested object]"
+        return {k: _trim_for_history(v, depth + 1) for k, v in list(val.items())[:200]}
+    if isinstance(val, (list, tuple)):
+        if depth > 6:
+            return "[nested list]"
+        return [_trim_for_history(v, depth + 1) for v in list(val)[:200]]
+    if isinstance(val, (bytes, bytearray)):
+        return f"[{len(val):,} bytes]"
+    return val
+
+
+def _record_run(wf: dict, result: dict, started_at: str, trigger_id: Optional[str]) -> None:
+    try:
+        _RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        record = {
+            "run_id":        result.get("run_id"),
+            "workflow_id":   wf.get("id"),
+            "workflow_name": wf.get("name"),
+            "trigger_id":    trigger_id,
+            "started_at":    started_at,
+            "finished_at":   datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "ok":            result.get("ok"),
+            "cancelled":     result.get("cancelled", False),
+            "fatal":         result.get("fatal"),
+            "node_status":   result.get("node_status", {}),
+            "node_durations": result.get("node_durations", {}),
+            "node_errors":   result.get("node_errors", {}),
+            "node_outputs":  _trim_for_history(result.get("node_outputs", {})),
+            "returns":       _trim_for_history(result.get("returns", {})),
+            "log":           (result.get("log") or [])[-1500:],
+        }
+        atomic_json_write(_RUNS_DIR / f"{record['run_id']}.json", record)
+        files = sorted(_RUNS_DIR.glob("run_*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+        for old in files[_RUNS_KEEP:]:
+            old.unlink(missing_ok=True)
+    except Exception:  # noqa: BLE001 - history is best-effort and must never fail a run
+        pass
+
+
+def _load_workflow_or_404(wf_id: str) -> dict:
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+    return json.loads(p.read_text(encoding="utf-8"))
 
 
 @router.post("/workflows/{wf_id}/run")
 async def run_workflow(wf_id: str, body: RunWorkflowBody = RunWorkflowBody()):
     """Execute a workflow and return the full result including per-node status and outputs."""
-    p = _wf_path(wf_id)
-    if not p.exists():
-        raise HTTPException(404, "Workflow not found")
-    wf = json.loads(p.read_text(encoding="utf-8"))
+    wf = _load_workflow_or_404(wf_id)
 
     from core.automate.executor import WorkflowExecutor  # noqa: PLC0415
+    started  = datetime.datetime.now(datetime.timezone.utc).isoformat()
     executor = WorkflowExecutor(wf, variables=body.variables or {}, trigger_id=body.trigger_id)
-    result   = await asyncio.to_thread(executor.execute)
+    _ACTIVE_RUNS[executor.run_id] = executor
+    try:
+        result = await asyncio.to_thread(executor.execute)
+    finally:
+        _ACTIVE_RUNS.pop(executor.run_id, None)
+    _record_run(wf, result, started, body.trigger_id)
     return result
 
 
@@ -503,15 +571,13 @@ async def run_workflow_stream(wf_id: str, body: RunWorkflowBody = RunWorkflowBod
 
     Each event is a JSON object on a ``data:`` line followed by two newlines.
     Event types:
+        {type: "run_started", run_id}   - first event; use run_id to cancel the run
         {type: "node_status", node_id, status: "running"|"done"|"error"|"skipped",
-         outputs?, error?}
+         outputs?, error?, reason?}
         {type: "log", level: "info"|"warning"|"error", msg, ts}
-        {type: "done", result}   â€” last event; ``result`` is the full executor result dict
+        {type: "done", result}   - last event; ``result`` is the full executor result dict
     """
-    p = _wf_path(wf_id)
-    if not p.exists():
-        raise HTTPException(404, "Workflow not found")
-    wf = json.loads(p.read_text(encoding="utf-8"))
+    wf = _load_workflow_or_404(wf_id)
 
     loop  = asyncio.get_event_loop()
     queue: asyncio.Queue = asyncio.Queue()
@@ -522,31 +588,112 @@ async def run_workflow_stream(wf_id: str, body: RunWorkflowBody = RunWorkflowBod
     async def _generate():
         from core.automate.executor import WorkflowExecutor  # noqa: PLC0415
 
+        started  = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        executor = WorkflowExecutor(
+            wf,
+            variables=body.variables or {},
+            trigger_id=body.trigger_id,
+            event_callback=_emit,
+        )
+        _ACTIVE_RUNS[executor.run_id] = executor
+
         async def _run_executor():
-            executor = WorkflowExecutor(
-                wf,
-                variables=body.variables or {},
-                trigger_id=body.trigger_id,
-                event_callback=_emit,
-            )
-            result = await asyncio.to_thread(executor.execute)
+            try:
+                result = await asyncio.to_thread(executor.execute)
+            finally:
+                _ACTIVE_RUNS.pop(executor.run_id, None)
+            _record_run(wf, result, started, body.trigger_id)
             queue.put_nowait({"type": "done", "result": result})
 
         task = asyncio.create_task(_run_executor())
+        yield f"data: {json.dumps({'type': 'run_started', 'run_id': executor.run_id})}\n\n"
 
-        while True:
-            event = await queue.get()
-            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-            if event.get("type") == "done":
-                break
-
-        await task  # surface any unhandled exception
+        try:
+            while True:
+                event = await queue.get()
+                yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
+                if event.get("type") == "done":
+                    break
+            await task  # surface any unhandled exception
+        finally:
+            # Client went away mid-run (tab closed, Stop pressed): stop scheduling new nodes.
+            if not task.done():
+                executor.cancel()
 
     return StreamingResponse(
         _generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/runs/{run_id}/cancel")
+async def cancel_run(run_id: str):
+    """Ask a running workflow to stop. Nodes already running finish; nothing new starts."""
+    executor = _ACTIVE_RUNS.get(run_id)
+    if not executor:
+        raise HTTPException(404, "Run is not active (already finished, or unknown id)")
+    executor.cancel()
+    return {"ok": True, "run_id": run_id}
+
+
+@router.get("/runs/active")
+async def active_runs():
+    return {"runs": [{"run_id": rid, "workflow_id": ex.workflow.get("id"),
+                      "workflow_name": ex.workflow.get("name")} for rid, ex in _ACTIVE_RUNS.items()]}
+
+
+@router.get("/runs/{run_id}")
+async def get_run(run_id: str):
+    if not run_id.startswith("run_") or not run_id.replace("_", "").isalnum():
+        raise HTTPException(400, "Bad run id")
+    p = _RUNS_DIR / f"{run_id}.json"
+    if not p.exists():
+        raise HTTPException(404, "Run not found")
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+@router.get("/workflows/{wf_id}/runs")
+async def list_runs(wf_id: str, limit: int = 30):
+    """Recent runs of one workflow (summaries, newest first). Use wf_id='all' for every workflow."""
+    items = []
+    if _RUNS_DIR.exists():
+        files = sorted(_RUNS_DIR.glob("run_*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+        for f in files:
+            rec = load_json(f, default=None)
+            if not isinstance(rec, dict) or (wf_id != "all" and rec.get("workflow_id") != wf_id):
+                continue
+            statuses = list((rec.get("node_status") or {}).values())
+            items.append({
+                "run_id": rec.get("run_id"), "workflow_id": rec.get("workflow_id"),
+                "workflow_name": rec.get("workflow_name"), "started_at": rec.get("started_at"),
+                "finished_at": rec.get("finished_at"), "ok": rec.get("ok"),
+                "cancelled": rec.get("cancelled", False),
+                "nodes_done": statuses.count("done"), "nodes_error": statuses.count("error"),
+                "nodes_skipped": statuses.count("skipped"),
+            })
+            if len(items) >= max(1, min(limit, 200)):
+                break
+    return {"runs": items}
+
+
+@router.get("/workflow-options")
+async def workflow_options():
+    """Saved workflows shaped for a `model_select` property - used by the Flow nodes."""
+    _ensure_dir()
+    opts = []
+    for p in sorted(_DATA_DIR.glob("*.json")):
+        try:
+            wf = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        types = [n.get("type", "") for n in wf.get("nodes", [])]
+        ins  = sum(1 for t in types if t == "flow.input" or t.startswith("global."))
+        outs = types.count("flow.return")
+        opts.append({"id": wf.get("id", p.stem), "label": wf.get("name", p.stem),
+                     "description": f"{len(types)} nodes, {ins} input(s), {outs} return(s)"})
+    opts.sort(key=lambda o: o["label"].lower())
+    return {"models": opts}
 
 
 # Examples + Import/Export/Share
@@ -632,7 +779,26 @@ async def load_example(example_id: str):
         data = json.loads(p.read_text(encoding="utf-8"))
     except Exception as exc:
         raise HTTPException(500, f"Failed to read example: {exc}")
-    return await _import_workflow_data(data)
+
+    # Examples that call sub-workflows list them under "requires". Import any that are
+    # not in the workspace yet (matched by name) so the example runs straight away.
+    also_loaded: list[str] = []
+    existing = {str(o["label"]).strip().lower() for o in (await workflow_options())["models"]}
+    for req_id in data.get("requires", []) or []:
+        rp = _EXAMPLES_DIR / f"{Path(str(req_id)).name}.json"
+        if not rp.exists():
+            continue
+        try:
+            req_data = json.loads(rp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if str(req_data.get("name", "")).strip().lower() not in existing:
+            await _import_workflow_data(req_data)
+            also_loaded.append(req_data.get("name", req_id))
+
+    result = await _import_workflow_data(data)
+    result["also_loaded"] = also_loaded
+    return result
 
 
 @router.get("/workflows/{wf_id}/export")
@@ -711,8 +877,8 @@ async def pick_path(
 ):
     """
     Open the native OS file or folder picker dialog and return the chosen path.
-    mode="file"   â†’ askopenfilename (pick an existing file)
-    mode="folder" â†’ askdirectory   (pick a directory)
+    mode="file"   → askopenfilename (pick an existing file)
+    mode="folder" → askdirectory   (pick a directory)
     Returns { path, cancelled }.
     """
     from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415
@@ -782,10 +948,10 @@ async def get_compile_info(wf_id: str):
     this workflow.  Used by the UI to conditionally show/hide compile options.
 
     Returns:
-        needs_api_key      â€” True when the workflow contains nodes that use API keys
-        has_snapshot_nodes â€” True when the workflow contains aethviondb.snapshot_search nodes
-        has_live_db_search â€” True when the workflow contains aethviondb.search nodes
-        snapshot_info      â€” list of {db, snap_name, size_bytes, size_display} per unique snapshot
+        needs_api_key      — True when the workflow contains nodes that use API keys
+        has_snapshot_nodes — True when the workflow contains aethviondb.snapshot_search nodes
+        has_live_db_search — True when the workflow contains aethviondb.search nodes
+        snapshot_info      — list of {db, snap_name, size_bytes, size_display} per unique snapshot
     """
     p = _wf_path(wf_id)
     if not p.exists():
@@ -838,7 +1004,7 @@ async def compile_workflow(wf_id: str, body: CompileOptions):
     except ImportError as exc:
         raise HTTPException(500, f"Compiler module not available: {exc}")
 
-    # Run in a thread â€” pip download can be slow
+    # Run in a thread — pip download can be slow
     import re as _re
     from fastapi.responses import Response  # noqa: PLC0415
 

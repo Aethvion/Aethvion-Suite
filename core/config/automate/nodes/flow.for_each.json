@@ -1,0 +1,93 @@
+{
+  "type": "flow.for_each",
+  "label": "For Each",
+  "category": "Flow",
+  "icon": "fa-repeat",
+  "color": "#38bdf8",
+  "description": "Run another workflow once for every item in a list: a real loop. Each run receives the item as a variable.",
+  "inputs": [
+    {
+      "name": "items",
+      "label": "Items",
+      "description": "A list (or JSON array, or one item per line)."
+    },
+    {
+      "name": "variables",
+      "label": "Variables",
+      "description": "Object of extra named values passed to every run."
+    },
+    {
+      "name": "workflow",
+      "label": "Workflow Override",
+      "description": "Workflow id or name, overriding the configured one."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "results",
+      "label": "Results",
+      "description": "List with each run's 'result' return, in item order."
+    },
+    {
+      "name": "all",
+      "label": "All Returns",
+      "description": "List with each run's full returns object."
+    },
+    {
+      "name": "count",
+      "label": "Succeeded",
+      "description": "How many runs succeeded."
+    },
+    {
+      "name": "errors",
+      "label": "Errors",
+      "description": "Failures, one per line."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the step failed. Wire it to handle failures yourself; leave it unwired and the node fails visibly instead."
+    }
+  ],
+  "properties": [
+    {
+      "key": "workflow",
+      "label": "Workflow",
+      "type": "model_select",
+      "source": "/api/automate/workflow-options",
+      "default": "",
+      "placeholder": "Select a workflow…"
+    },
+    {
+      "key": "item_name",
+      "label": "Item Variable Name",
+      "type": "text",
+      "default": "item"
+    },
+    {
+      "key": "parallel",
+      "label": "Run In Parallel (1-8)",
+      "type": "number",
+      "default": 1
+    },
+    {
+      "key": "max_items",
+      "label": "Max Items",
+      "type": "number",
+      "default": 100
+    },
+    {
+      "key": "stop_on_error",
+      "label": "Stop On First Error",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "variables",
+      "label": "Variables (JSON)",
+      "type": "code",
+      "default": "",
+      "placeholder": "{\"style\": \"low-poly\"}"
+    }
+  ]
+}

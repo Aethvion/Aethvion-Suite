@@ -3,18 +3,18 @@ core/automate/compiler.py
 Compile a workflow into a standalone runnable bundle (zip file).
 
 Bundle layout:
-  run.py            â€” embedded executor + node handlers + FastAPI server + web UI
-  workflow.json     â€” the workflow definition
-  requirements.txt  â€” auto-detected pip packages
-  .env              â€” API keys (if include_api_key=True)
-  start.bat         â€” Windows launcher
-  start.sh          â€” Unix launcher
-  packages/         â€” pre-downloaded wheels (if include_packages=True)
+  run.py            — embedded executor + node handlers + FastAPI server + web UI
+  workflow.json     — the workflow definition
+  requirements.txt  — auto-detected pip packages
+  .env              — API keys (if include_api_key=True)
+  start.bat         — Windows launcher
+  start.sh          — Unix launcher
+  packages/         — pre-downloaded wheels (if include_packages=True)
 
-Implementation note â€” `except Exception` patterns
+Implementation note — `except Exception` patterns
 The majority of `except Exception` clauses in this file live inside Python
 *template strings* (the `_HANDLER_CODE` dict and the run.py generation
-template).  These strings are *data* â€” they are written verbatim into the
+template).  These strings are *data* — they are written verbatim into the
 generated `run.py` of each compiled bundle, not executed here.  They represent
 appropriate workflow-runtime error handling (return an error dict, log a
 warning, etc.) and are intentional.
@@ -70,7 +70,7 @@ def _resolve_db_root(db_name: str) -> Path:
 
 
 # Dependency map
-# node_type â†’ pip packages, required env-var keys, whether AethvionDB reader
+# node_type → pip packages, required env-var keys, whether AethvionDB reader
 # is needed, and whether AI calls are needed in standalone mode.
 
 NODE_DEPS: dict[str, dict] = {
@@ -157,7 +157,7 @@ NODE_DEPS: dict[str, dict] = {
 _BASE_REQS = ["fastapi", "uvicorn[standard]", "python-dotenv"]
 
 # Handler code blocks (lazy)
-# Loaded on first compile â€” not at import time â€” so startup pays no cost if
+# Loaded on first compile — not at import time — so startup pays no cost if
 # the user never compiles a workflow.
 _HANDLERS_DIR       = Path(__file__).parent.parent / "config" / "automate" / "handlers"
 _handler_code_cache: dict[str, str] | None = None
@@ -287,7 +287,7 @@ def _analyze_workflow(workflow: dict) -> dict:
             ):
                 snapshot_nodes.append(entry)
 
-    # Collect global nodes (global.* â€” always exposed via API & compiled bundles)
+    # Collect global nodes (global.* — always exposed via API & compiled bundles)
     _GLOBAL_VAR_TYPE: dict[str, str] = {
         "global.text":     "string",
         "global.number":   "number",
@@ -313,7 +313,7 @@ def _analyze_workflow(workflow: dict) -> dict:
             "description": str(props.get("description", "")),
         })
 
-    # Collect named triggers (trigger.* nodes â€” always included, slug used for API routes)
+    # Collect named triggers (trigger.* nodes — always included, slug used for API routes)
     triggers: list[dict] = []
     seen_slugs: set[str] = set()
     for node in workflow.get("nodes", []):
@@ -458,7 +458,7 @@ def _generate_run_py(workflow: dict, analysis: dict) -> str:
 
     # Build handler code block (only used types)
     handler_blocks: list[str] = []
-    # ai_model shared impl â€” included if any AI node uses it
+    # ai_model shared impl — included if any AI node uses it
     if needs_ai:
         ai_model_shared = '''\
 # Shared AI model handler (used by ai.google and ai.any)
@@ -476,7 +476,7 @@ def _h_ai_model(node, inputs, ctx):
         temp_raw = inputs.get("temperature")
         temperature = float(temp_raw) if temp_raw not in (None, "") else float(p.get("temperature", 0.7))
     except Exception: temperature = 0.7
-    if not model_id: raise ValueError("No model selected â€” open node properties and pick a model.")
+    if not model_id: raise ValueError("No model selected — open node properties and pick a model.")
     parts = [x for x in [prefix, in_val, suffix] if x]
     prompt = "\\n\\n".join(parts) if parts else "(no input)"
     try:
@@ -491,7 +491,7 @@ def _h_ai_model(node, inputs, ctx):
         if code:
             handler_blocks.append(code)
 
-    # Build registry â€” function name derived from node type by convention
+    # Build registry — function name derived from node type by convention
     registry_lines = []
     for ntype in sorted(used):
         if ntype in _get_handler_code():
@@ -512,10 +512,10 @@ def _get_ai_client():
     try:
         import google.generativeai as _genai
     except ImportError:
-        raise RuntimeError("google-generativeai not installed â€” run: pip install -r requirements.txt")
+        raise RuntimeError("google-generativeai not installed — run: pip install -r requirements.txt")
     api_key = os.environ.get("GOOGLE_AI_API_KEY", "")
     if not api_key:
-        raise RuntimeError("GOOGLE_AI_API_KEY not set â€” add it to .env")
+        raise RuntimeError("GOOGLE_AI_API_KEY not set — add it to .env")
     _genai.configure(api_key=api_key)
     _ai_client = _genai
     return _genai
@@ -577,7 +577,7 @@ try:
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).parent / ".env")
 except ImportError:
-    pass  # python-dotenv not installed â€” set env vars manually
+    pass  # python-dotenv not installed — set env vars manually
 
 # Utilities
 
@@ -609,14 +609,14 @@ def _output_summary(outputs: dict) -> str:
     def _fmt(port, s):
         preview = s[:80].replace("\\n", " ")
         return '[%s] "%s%s"' % (port, preview, "\\u2026" if len(s) > 80 else "")
-    # Pass 1 â€” skip trivially-empty values
+    # Pass 1 — skip trivially-empty values
     for port, val in outputs.items():
         if port.startswith("_"):
             continue
         s = _to_str(val)
         if s and s not in _TRIVIAL:
             return _fmt(port, s)
-    # Pass 2 â€” anything non-empty (catches counts, speeds, etc.)
+    # Pass 2 — anything non-empty (catches counts, speeds, etc.)
     for port, val in outputs.items():
         if port.startswith("_"):
             continue
@@ -652,7 +652,7 @@ class WorkflowExecutor:
         self._info('Starting workflow "%s"' % name)
         order = self._topo_sort()
         if order is None:
-            self._error("Cycle detected â€” cannot execute.")
+            self._error("Cycle detected — cannot execute.")
             return self._build_result(fatal="Cycle detected.")
         if not order:
             self._warn("No nodes to execute.")
@@ -853,7 +853,7 @@ async def index():
 
 @app.get("/inputs")
 async def get_inputs():
-    """Input nodes (input.text / input.number / input.list) â€” legacy endpoint."""
+    """Input nodes (input.text / input.number / input.list) — legacy endpoint."""
     result = []
     for n in _INPUT_NODES:
         ntype = n.get("type","")
@@ -901,7 +901,7 @@ async def api_schema():
         "endpoints": [
             {{
                 "method": "GET", "path": "/",
-                "description": "Web dashboard â€” run the workflow interactively in a browser.",
+                "description": "Web dashboard — run the workflow interactively in a browser.",
             }},
             {{
                 "method": "POST", "path": "/run",
@@ -920,7 +920,7 @@ async def api_schema():
             }},
             {{
                 "method": "GET", "path": "/stream",
-                "description": "Server-Sent Events stream â€” receive log lines in real time (all triggers).",
+                "description": "Server-Sent Events stream — receive log lines in real time (all triggers).",
                 "query_params": {{
                     "variables": "JSON object mapping variable names to values",
                     "overrides": "JSON object mapping input-node IDs to values",
@@ -944,7 +944,7 @@ async def api_schema():
             }},
             {{
                 "method": "GET", "path": "/api/schema",
-                "description": "This endpoint â€” machine-readable API schema.",
+                "description": "This endpoint — machine-readable API schema.",
             }},
         ],
     }}
@@ -1053,7 +1053,7 @@ if __name__ == "__main__":
     if _TRIGGERS:
         print(f"  Triggers: {{', '.join(t['name'] for t in _TRIGGERS)}}")
         for t in _TRIGGERS:
-            print(f"    POST /run/{{t['slug']}}  â€” {{t['name']}}")
+            print(f"    POST /run/{{t['slug']}}  — {{t['name']}}")
     print(f"")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 '''
@@ -1097,9 +1097,9 @@ def compile_workflow(workflow: dict, options: dict) -> tuple[bytes, list[str]]:
     Compile *workflow* into a zip bundle.
 
     Options:
-        include_packages  (bool, default True)  â€” pip download wheels into packages/
-        include_api_key   (bool, default False) â€” embed API keys from live .env
-        include_snapshot  (bool, default False) â€” bundle AethvionDB snapshot .jsonl files
+        include_packages  (bool, default True)  — pip download wheels into packages/
+        include_api_key   (bool, default False) — embed API keys from live .env
+        include_snapshot  (bool, default False) — bundle AethvionDB snapshot .jsonl files
 
     Returns:
         (zip_bytes, warnings)  where warnings is a list of non-fatal messages.
@@ -1113,10 +1113,10 @@ def compile_workflow(workflow: dict, options: dict) -> tuple[bytes, list[str]]:
     safe_name   = re.sub(r"[^\w\-]", "_", wf_name)
     warnings: list[str] = []
 
-    # Warn about live AethvionDB Search nodes â€” they can't work in a bundle
+    # Warn about live AethvionDB Search nodes — they can't work in a bundle
     if analysis.get("has_live_db_search"):
         warnings.append(
-            "This workflow contains AethvionDB Search nodes â€” these require a live "
+            "This workflow contains AethvionDB Search nodes — these require a live "
             "database and will be skipped in the compiled bundle. "
             "Use AethvionDB Snapshot Search instead for offline use."
         )
@@ -1159,12 +1159,12 @@ def compile_workflow(workflow: dict, options: dict) -> tuple[bytes, list[str]]:
                     else:
                         warnings.append(
                             f"Snapshot '{snap['snap_name']}' for database '{snap['db']}' "
-                            "was not found on disk â€” it was not included in the bundle."
+                            "was not found on disk — it was not included in the bundle."
                         )
                 else:
                     warnings.append(
                         f"No snapshot file found for database '{snap['db']}' "
-                        "â€” it was not included in the bundle."
+                        "— it was not included in the bundle."
                     )
 
         if include_packages:

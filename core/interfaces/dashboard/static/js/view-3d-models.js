@@ -1,5 +1,5 @@
 /**
- * Aethvion Suite â€” 3D Models View (Unified Models View v14.2)
+ * Aethvion Suite — 3D Models View (Unified Models View v14.2)
  * 
  * Handles search, filtering, and interaction for 3D generation models.
  */
@@ -185,7 +185,7 @@
                         const vram = data.vram_used > 0
                             ? ` (${data.vram_used.toFixed(1)} / ${data.vram_total.toFixed(1)} GB VRAM)`
                             : '';
-                        badge.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Loading VRAMâ€¦${vram}`;
+                        badge.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Loading VRAM…${vram}`;
                         badge.style.borderColor = 'rgba(251, 146, 60, 0.4)';
                         badge.style.color = '#fb923c';
                         badge.classList.add('pulse-amber');
@@ -372,7 +372,7 @@
         },
 
         async handleRunModel(modelId) {
-            window.showToast(`Launching ${modelId}â€¦`, 'info');
+            window.showToast(`Launching ${modelId}…`, 'info');
             try {
                 const res = await fetch(`/api/3d/launch/${modelId}`);
                 const data = await res.json();

@@ -117,6 +117,8 @@ class GenRequest(BaseModel):
     image_base64: str
     seed:         int       = 42
     formats:      List[str] = ["gaussian", "mesh"]
+    simplify:     float     = 0.95   # fraction of triangles removed (0.95 = keep 5%)
+    texture_size: int       = 1024
 
 
 @app.get("/health")
@@ -126,6 +128,64 @@ def health():
     if _status == "failed" and _load_error:
         r["error"] = _load_error[-2000:]
     return r
+
+
+def _export_glb(outputs, req):
+    """Turn pipeline outputs into GLB bytes. Returns (bytes, textured, note).
+
+    Preferred path: TRELLIS' own to_glb, which simplifies the mesh and bakes a texture
+    by rendering the Gaussians. That needs two compiled extensions (nvdiffrast and
+    diff_gaussian_rasterization). When either is missing the mesh is still exported,
+    simplified and coloured per vertex, so the model is usable instead of failing.
+    """
+    import numpy as np
+    import trimesh
+
+    mesh = outputs["mesh"][0]
+    rotate = trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])   # face the viewer
+
+    why = ""
+    if "gaussian" in outputs:
+        try:
+            from trellis.utils import postprocessing_utils
+            glb = postprocessing_utils.to_glb(
+                outputs["gaussian"][0], mesh,
+                simplify=req.simplify, texture_size=req.texture_size, verbose=False,
+            )
+            glb.apply_transform(rotate)
+            return glb.export(file_type="glb"), True, ""
+        except (ImportError, ModuleNotFoundError) as exc:
+            why = f"texture baking unavailable ({exc})"
+            print(f"[{MODEL_ID}] {why}: exporting with vertex colours instead")
+
+    vertices = mesh.vertices.detach().float().cpu().numpy()
+    faces    = mesh.faces.detach().cpu().numpy()
+    colours  = None
+    if getattr(mesh, "vertex_attrs", None) is not None:
+        colours = mesh.vertex_attrs[:, :3].detach().float().cpu().numpy().clip(0.0, 1.0)
+
+    # Simplify (the raw mesh has hundreds of thousands of triangles), then carry the
+    # colours over from the nearest original vertex.
+    try:
+        from trellis.utils import postprocessing_utils
+        new_v, new_f = postprocessing_utils.postprocess_mesh(
+            vertices, faces, simplify=req.simplify > 0, simplify_ratio=req.simplify,
+            fill_holes=False, verbose=False,
+        )
+        if colours is not None and len(new_v):
+            from scipy.spatial import cKDTree
+            colours = colours[cKDTree(vertices).query(new_v)[1]]
+        vertices, faces = new_v, new_f
+    except Exception as exc:
+        print(f"[{MODEL_ID}] mesh simplification skipped: {exc}")
+
+    vertices = vertices @ np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])      # z-up -> y-up, as to_glb does
+    out = trimesh.Trimesh(vertices, faces, process=False)
+    if colours is not None and len(colours) == len(vertices):
+        rgba = np.concatenate([colours, np.ones((len(colours), 1))], axis=1)
+        out.visual = trimesh.visual.ColorVisuals(out, vertex_colors=(rgba * 255).astype(np.uint8))
+    out.apply_transform(rotate)
+    return out.export(file_type="glb"), False, (why or "mesh only") + "; colours are stored per vertex"
 
 
 @app.post("/generate")
@@ -142,16 +202,11 @@ async def generate(req: GenRequest):
         print(f"[{MODEL_ID}] /generate seed={req.seed}")
         outputs = _pipeline.run(image, seed=req.seed, formats=req.formats)
         print(f"[{MODEL_ID}] Inference complete")
-        if "mesh" in outputs and "gaussian" in outputs:
-            # 90 degrees left rotation at creation level
-            import numpy as np
-            import trimesh
-            matrix = trimesh.transformations.rotation_matrix(np.pi/2, [0, 1, 0])
-            outputs["mesh"][0].apply_transform(matrix)
-
-            from trellis.utils import postprocessing_utils
-            glb = postprocessing_utils.to_glb(outputs["gaussian"][0], outputs["mesh"][0])
-            return {"success": True, "glb_base64": base64.b64encode(glb).decode()}
+        if "mesh" in outputs:
+            data, textured, note = _export_glb(outputs, req)
+            print(f"[{MODEL_ID}] GLB size: {len(data) / 1024:.1f} KB  textured={textured}")
+            return {"success": True, "glb_base64": base64.b64encode(data).decode(),
+                    "textured": textured, "note": note}
         return {"success": True, "formats": list(outputs.keys())}
     except Exception:
         tb = traceback.format_exc()

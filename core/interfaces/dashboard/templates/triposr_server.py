@@ -31,6 +31,47 @@ _status     = "launching"
 _load_error = None
 
 import torch
+
+
+def _install_marching_cubes_fallback():
+    """Provide `torchmcubes` when the compiled extension is not installed.
+
+    TripoSR imports `torchmcubes.marching_cubes`, a C++/CUDA extension that has to be
+    built from source and often fails to build on Windows.  This stand-in does the same
+    job on the CPU with scikit-image.  It is slower (about a second at resolution 256)
+    but needs no compiler.
+    """
+    try:
+        import torchmcubes  # noqa: F401 — the real extension is present, use it
+        return
+    except Exception:
+        pass
+    import types
+    import numpy as np
+    from skimage import measure
+
+    def marching_cubes(vol, thresh):
+        device = vol.device
+        verts, faces, _normals, _values = measure.marching_cubes(
+            vol.detach().float().cpu().numpy(), float(thresh))
+        # Face winding must point away from the solid (values below the threshold).
+        # A closed outward-facing surface has positive signed volume; flip if it is not.
+        a, b, c = verts[faces[:, 0]], verts[faces[:, 1]], verts[faces[:, 2]]
+        if float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum()) < 0:
+            faces = faces[:, ::-1]
+        # torchmcubes returns coordinates in (z, y, x) order; TripoSR swaps them back.
+        verts = np.ascontiguousarray(verts[:, [2, 1, 0]], dtype=np.float32)
+        faces = np.ascontiguousarray(faces, dtype=np.int64)
+        return torch.from_numpy(verts).to(device), torch.from_numpy(faces).to(device)
+
+    shim = types.ModuleType("torchmcubes")
+    shim.marching_cubes = marching_cubes
+    shim.__aethvion_fallback__ = True
+    sys.modules["torchmcubes"] = shim
+    print("[triposr] torchmcubes not installed: using the scikit-image marching-cubes fallback (CPU)")
+
+
+_install_marching_cubes_fallback()
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException

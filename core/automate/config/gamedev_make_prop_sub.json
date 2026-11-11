@@ -1,0 +1,181 @@
+{
+  "name": "Make Prop (sub-workflow)",
+  "description": "A reusable building block: brief in, checked 3D model out. It has no trigger: other workflows call it with Run Workflow, For Each or Retry Until Pass. Returns: result (the mesh), passed, feedback. Runs out of the box with the built-in demo endpoints (placeholder box + checker texture). Open each Models node and pick a real model to make it produce real assets.",
+  "tags": [
+    "gamedev",
+    "3d",
+    "sub-workflow"
+  ],
+  "nodes": [
+    {
+      "id": "in",
+      "type": "flow.input",
+      "label": "Input: brief",
+      "x": 60,
+      "y": 80,
+      "properties": {
+        "name": "input",
+        "default": "A simple wooden barrel"
+      }
+    },
+    {
+      "id": "fbin",
+      "type": "flow.input",
+      "label": "Input: feedback",
+      "x": 60,
+      "y": 280,
+      "properties": {
+        "name": "feedback",
+        "default": ""
+      }
+    },
+    {
+      "id": "prompt",
+      "type": "data.template",
+      "label": "Build Prompt",
+      "x": 380,
+      "y": 160,
+      "properties": {
+        "template": "{{input}}\n\nIssues to fix from the previous attempt: {{var_a|none}}"
+      }
+    },
+    {
+      "id": "gen",
+      "type": "model3d.generate",
+      "label": "Generate 3D Model",
+      "x": 700,
+      "y": 80,
+      "properties": {
+        "endpoint": "demo:mesh",
+        "prompt": "",
+        "seed": "",
+        "params": "",
+        "name": "",
+        "tags": "prop"
+      }
+    },
+    {
+      "id": "tex",
+      "type": "model3d.texture",
+      "label": "Texture Model",
+      "x": 1020,
+      "y": 80,
+      "properties": {
+        "endpoint": "demo:texture",
+        "prompt": "",
+        "seed": "",
+        "params": "",
+        "name": "",
+        "tags": "prop, textured"
+      }
+    },
+    {
+      "id": "check",
+      "type": "mesh.inspect",
+      "label": "Mesh Checks",
+      "x": 1340,
+      "y": 80,
+      "properties": {
+        "max_triangles": 20000,
+        "require_uvs": true,
+        "require_textures": true,
+        "extract_textures": false
+      }
+    },
+    {
+      "id": "r_res",
+      "type": "flow.return",
+      "label": "Return: result",
+      "x": 1660,
+      "y": 40,
+      "properties": {
+        "name": "result"
+      }
+    },
+    {
+      "id": "r_pass",
+      "type": "flow.return",
+      "label": "Return: passed",
+      "x": 1660,
+      "y": 220,
+      "properties": {
+        "name": "passed"
+      }
+    },
+    {
+      "id": "r_fb",
+      "type": "flow.return",
+      "label": "Return: feedback",
+      "x": 1660,
+      "y": 400,
+      "properties": {
+        "name": "feedback"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "in",
+      "sourcePort": "out",
+      "targetNodeId": "prompt",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "fbin",
+      "sourcePort": "out",
+      "targetNodeId": "prompt",
+      "targetPort": "var_a"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "prompt",
+      "sourcePort": "out",
+      "targetNodeId": "gen",
+      "targetPort": "prompt"
+    },
+    {
+      "id": "ex_c4",
+      "sourceNodeId": "gen",
+      "sourcePort": "mesh",
+      "targetNodeId": "tex",
+      "targetPort": "mesh"
+    },
+    {
+      "id": "ex_c5",
+      "sourceNodeId": "prompt",
+      "sourcePort": "out",
+      "targetNodeId": "tex",
+      "targetPort": "prompt"
+    },
+    {
+      "id": "ex_c6",
+      "sourceNodeId": "tex",
+      "sourcePort": "mesh",
+      "targetNodeId": "check",
+      "targetPort": "mesh"
+    },
+    {
+      "id": "ex_c7",
+      "sourceNodeId": "tex",
+      "sourcePort": "mesh",
+      "targetNodeId": "r_res",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c8",
+      "sourceNodeId": "check",
+      "sourcePort": "ok",
+      "targetNodeId": "r_pass",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c9",
+      "sourceNodeId": "check",
+      "sourcePort": "issues",
+      "targetNodeId": "r_fb",
+      "targetPort": "in"
+    }
+  ]
+}

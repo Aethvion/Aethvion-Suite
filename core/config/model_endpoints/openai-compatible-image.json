@@ -1,0 +1,44 @@
+{
+  "template": true,
+  "id": "openai-compatible-image",
+  "name": "OpenAI-compatible image API",
+  "description": "Any server exposing POST /v1/images/generations in the OpenAI format (many local image servers do). Set the URL and model; the key is read from the IMAGE_API_KEY environment variable (.env).",
+  "capabilities": [
+    "image.generate"
+  ],
+  "adapter": "http",
+  "output": {
+    "kind": "image",
+    "ext": "png"
+  },
+  "params": [
+    {
+      "key": "model",
+      "type": "text",
+      "default": "gpt-image-1"
+    },
+    {
+      "key": "size",
+      "type": "text",
+      "default": "1024x1024"
+    }
+  ],
+  "http": {
+    "method": "POST",
+    "url": "http://127.0.0.1:8000/v1/images/generations",
+    "headers": {
+      "Authorization": "Bearer ${IMAGE_API_KEY}"
+    },
+    "body": {
+      "model": "{{params.model}}",
+      "prompt": "{{prompt}}",
+      "n": 1,
+      "size": "{{params.size}}",
+      "response_format": "b64_json"
+    },
+    "result": {
+      "type": "base64",
+      "path": "data[0].b64_json"
+    }
+  }
+}

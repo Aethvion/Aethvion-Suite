@@ -1,0 +1,38 @@
+{
+  "template": true,
+  "id": "blender-decimate",
+  "name": "Blender: reduce polygons",
+  "description": "Runs Blender in the background to decimate a mesh to a fraction of its triangles and re-export it as GLB. Requires Blender installed and 'blender' on PATH (or put the full path to blender.exe as the first argument).",
+  "capabilities": [
+    "mesh.process"
+  ],
+  "adapter": "command",
+  "requires": [
+    "mesh"
+  ],
+  "output": {
+    "kind": "mesh",
+    "ext": "glb"
+  },
+  "params": [
+    {
+      "key": "ratio",
+      "type": "number",
+      "default": 0.5
+    }
+  ],
+  "command": {
+    "args": [
+      "blender",
+      "--background",
+      "--factory-startup",
+      "--python",
+      "{{scripts_dir}}/blender_decimate.py",
+      "--",
+      "{{mesh_path}}",
+      "{{output_path}}",
+      "{{params.ratio}}"
+    ],
+    "timeout": 900
+  }
+}

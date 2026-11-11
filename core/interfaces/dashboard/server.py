@@ -74,6 +74,8 @@ def _import_remaining_routers():
         ("core.aethviondb.aethviondb_routes",           "router", "aethviondb_router"),
         ("core.aethviondb.api_v1.router",               "router", "aethviondb_v1_router"),
         ("core.automate.automate_routes",               "router", "automate_router"),
+        ("core.assets.asset_routes",                    "router", "assets_router"),
+        ("core.modelhub.modelhub_routes",               "router", "modelhub_router"),
         # Project Mapper is consumed as the standalone package (aethvion-project-mapper),
         # not vendored in-tree. Optional: if the package isn't installed the router
         # simply fails to load and the PM tab's backend is disabled (graceful).

@@ -1,0 +1,38 @@
+{
+  "template": true,
+  "id": "local-3d-server",
+  "name": "Local 3D server (Suite worker protocol)",
+  "description": "Any local server that speaks the same protocol as the Suite's own 3D workers: POST /generate with {prompt, image_base64, seed, action} returns {success, glb_base64}. Change the URL to where your server listens.",
+  "capabilities": [
+    "mesh.generate"
+  ],
+  "adapter": "http",
+  "output": {
+    "kind": "mesh",
+    "ext": "glb"
+  },
+  "params": [
+    {
+      "key": "seed",
+      "type": "number",
+      "default": 1
+    }
+  ],
+  "http": {
+    "method": "POST",
+    "url": "http://127.0.0.1:8090/generate",
+    "timeout": 900,
+    "body": {
+      "prompt": "{{prompt}}",
+      "image_base64": "{{image_b64}}",
+      "seed": "{{params.seed}}",
+      "action": "generate"
+    },
+    "result": {
+      "type": "base64",
+      "path": "glb_base64",
+      "success_path": "success",
+      "error_path": "error"
+    }
+  }
+}

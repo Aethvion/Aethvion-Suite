@@ -1,0 +1,20 @@
+{
+  "name": "Image to 3D Model",
+  "description": "Start from a picture you already have: an Image node feeds a 3D model (Trellis-2 or TripoSR), the result is measured and shown. No image model needed. Open the Image node and pick a file first; open Generate 3D Model to choose the 3D model.",
+  "tags": ["gamedev", "3d", "models", "starter"],
+  "nodes": [
+    {"id": "t", "type": "trigger.manual", "label": "Run", "x": 60, "y": 80, "properties": {"name": "Run"}},
+    {"id": "img", "type": "input.image", "label": "Reference Image", "x": 60, "y": 260, "properties": {"image": "", "tags": "reference"}},
+    {"id": "gen", "type": "model3d.generate", "label": "Generate 3D Model", "x": 400, "y": 120, "properties": {"endpoint": "3d:trellis-2", "prompt": "", "seed": "", "params": "", "name": "", "tags": "prop"}},
+    {"id": "check", "type": "mesh.inspect", "label": "Measure Mesh", "x": 740, "y": 120, "properties": {"max_triangles": 0, "require_uvs": false, "require_textures": false, "extract_textures": true}},
+    {"id": "model", "type": "output.display", "label": "3D Model", "x": 1080, "y": 60, "properties": {}},
+    {"id": "report", "type": "output.display", "label": "Mesh Report", "x": 1080, "y": 280, "properties": {}}
+  ],
+  "connections": [
+    {"id": "ex_c1", "sourceNodeId": "t", "sourcePort": "trigger", "targetNodeId": "gen", "targetPort": "__trigger__"},
+    {"id": "ex_c2", "sourceNodeId": "img", "sourcePort": "image", "targetNodeId": "gen", "targetPort": "image"},
+    {"id": "ex_c3", "sourceNodeId": "gen", "sourcePort": "mesh", "targetNodeId": "check", "targetPort": "mesh"},
+    {"id": "ex_c4", "sourceNodeId": "gen", "sourcePort": "mesh", "targetNodeId": "model", "targetPort": "in"},
+    {"id": "ex_c5", "sourceNodeId": "check", "sourcePort": "summary", "targetNodeId": "report", "targetPort": "in"}
+  ]
+}

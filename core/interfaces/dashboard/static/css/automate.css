@@ -3540,3 +3540,22 @@
 
 
 
+
+/* Asset previews on model / asset / flow nodes and in the Results panel */
+.at-asset-preview { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.at-asset-preview:last-child { margin-bottom: 0; }
+.at-asset-chip {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px; border-radius: 6px;
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    color: var(--text-primary, #e2e8f0); font-size: 0.72rem; text-decoration: none;
+    min-width: 0;
+}
+.at-asset-chip:hover { background: color-mix(in srgb, var(--primary) 16%, transparent); }
+.at-asset-chip i { color: var(--primary); flex-shrink: 0; }
+.at-asset-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.at-asset-chip em { font-style: normal; opacity: 0.55; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; }
+.at-asset-note { white-space: pre-wrap; font-size: 0.72rem; line-height: 1.45; opacity: 0.85; }
+.at-asset-port-label { font-size: 0.68rem; opacity: 0.55; margin-bottom: 4px; }
+.at-btn-run[data-mode="stop"] { background: color-mix(in srgb, #f87171 22%, transparent); border-color: color-mix(in srgb, #f87171 55%, transparent); color: #fecaca; }

@@ -1,5 +1,5 @@
 /**
- * Aethvion Suite â€” Partial Loader
+ * Aethvion Suite — Partial Loader
  *
  * Fetches panel HTML on first activation and injects it into the placeholder div.
  * Every main-tab-panel in index.html is an empty shell with data-partial="name".
@@ -13,7 +13,7 @@
     const FILE_TABS = new Set(['output', 'screenshots', 'camera', 'uploads']);
 
     const _loaded  = new Set();   // panelIds fully injected
-    const _pending = new Map();   // panelId â†’ Promise (in-flight)
+    const _pending = new Map();   // panelId → Promise (in-flight)
     const _loadedScripts = new Set(); // script paths fully loaded
 
     const SCRIPT_MAP = {
@@ -29,6 +29,7 @@
         'explained':        ['/static/js/mode-explained.js'],
         'aethviondb':       ['/static/js/mode-aethviondb.js'],
         'automate':         ['/static/js/mode-automate.js'],
+        'asset-library':    ['/static/js/mode-asset-library.js'],
         'physics-lab':      ['/static/js/mode-physics-lab.js'],
         'stats-lab':        ['/static/js/mode-stats-lab.js'],
         'chembio-lab':      ['/static/js/mode-chembio-lab.js'],
