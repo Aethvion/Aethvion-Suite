@@ -534,3 +534,54 @@ class CompanionScratchpad(CompanionComponent):
                 "sections": init_ledger["sections"],
                 "last_modified": init_ledger["last_modified"]
             }
+
+    def delete_entry(self, entry_id: str) -> Dict[str, Any]:
+        """Remove a single entry block by ID from the scratchpad ledger."""
+        with self._lock:
+            self._initialize_if_missing()
+            try:
+                ledger = json.loads(self._ledger_file.read_text(encoding="utf-8"))
+            except Exception:
+                ledger = {"version": 2, "sections": [], "entries": []}
+
+            entries = ledger.get("entries") or []
+            new_entries = [e for e in entries if e.get("id") != entry_id]
+            if len(new_entries) == len(entries):
+                raise ValueError(f"Scratchpad entry '{entry_id}' not found")
+
+            ledger["entries"] = new_entries
+            ledger["last_modified"] = _utcnow_iso()
+            atomic_json_write(self._ledger_file, ledger)
+            self._render_ledger_to_md(ledger)
+            return self.load()
+
+    def add_comment(self, entry_id: str, text: str, author: Optional[Any] = None) -> Dict[str, Any]:
+        """Add a comment to an existing scratchpad entry block."""
+        comment_text = (text or "").strip()
+        if not comment_text:
+            raise ValueError("Comment text cannot be empty")
+
+        with self._lock:
+            self._initialize_if_missing()
+            try:
+                ledger = json.loads(self._ledger_file.read_text(encoding="utf-8"))
+            except Exception:
+                ledger = {"version": 2, "sections": [], "entries": []}
+
+            entries = ledger.get("entries") or []
+            target = next((e for e in entries if e.get("id") == entry_id), None)
+            if not target:
+                raise ValueError(f"Scratchpad entry '{entry_id}' not found")
+
+            author_meta = _resolve_author_info(author, default_id="marcel", default_name="Marcel")
+            comment = {
+                "id": f"c_{uuid.uuid4().hex[:6]}",
+                "text": comment_text,
+                "author": author_meta,
+                "timestamp": _utcnow_iso(),
+            }
+            target.setdefault("comments", []).append(comment)
+            ledger["last_modified"] = _utcnow_iso()
+            atomic_json_write(self._ledger_file, ledger)
+            self._render_ledger_to_md(ledger)
+            return self.load()

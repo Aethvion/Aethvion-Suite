@@ -2974,6 +2974,98 @@
     color: #e2e8f0;
     word-break: break-word;
 }
+.gc-sp-block-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.gc-sp-block:hover .gc-sp-block-actions {
+    opacity: 1;
+}
+.gc-sp-action-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.gc-sp-action-btn:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.08);
+}
+.gc-sp-delete-btn:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+.gc-sp-comments {
+    margin-top: 0.45rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.gc-sp-comment {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: #cbd5e1;
+}
+.gc-sp-comment-author {
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.gc-sp-comment-text {
+    word-break: break-word;
+}
+.gc-sp-comment-time {
+    margin-left: auto;
+    font-size: 0.64rem;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.gc-sp-comment-form {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+}
+.gc-sp-comment-form.hidden {
+    display: none;
+}
+.gc-sp-comment-input {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.28);
+    color: #f1f5f9;
+    outline: none;
+}
+.gc-sp-comment-input:focus {
+    border-color: var(--sp-accent, #8b5cf6);
+}
+.gc-sp-comment-send {
+    background: rgba(139, 92, 246, 0.22);
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    color: #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    cursor: pointer;
+}
+.gc-sp-comment-send:hover {
+    background: rgba(139, 92, 246, 0.4);
+}
 .cc-group-avatar {
     width: 32px;
     height: 32px;

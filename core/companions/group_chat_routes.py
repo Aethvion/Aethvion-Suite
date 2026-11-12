@@ -84,6 +84,11 @@ class ScratchpadAppendRequest(BaseModel):
     tags: Optional[List[str]] = None
 
 
+class ScratchpadCommentRequest(BaseModel):
+    text: str
+    author: Optional[str] = "Marcel"
+
+
 # Routes
 
 @router.get("")
@@ -315,3 +320,31 @@ async def clear_group_scratchpad(group_id: str):
     sp = CompanionScratchpad(g_dir, "Group")
     await asyncio.to_thread(sp.clear)
     return {"success": True, "scratchpad": await asyncio.to_thread(sp.load)}
+
+
+@router.delete("/{group_id}/scratchpad/entries/{entry_id}")
+async def delete_group_scratchpad_entry(group_id: str, entry_id: str):
+    """Delete a single entry block from the group scratchpad."""
+    g_dir = _group_dir(group_id)
+    if not g_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
+    sp = CompanionScratchpad(g_dir, "Group")
+    try:
+        data = await asyncio.to_thread(sp.delete_entry, entry_id)
+        return {"success": True, "scratchpad": data}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{group_id}/scratchpad/entries/{entry_id}/comments")
+async def comment_group_scratchpad_entry(group_id: str, entry_id: str, req: ScratchpadCommentRequest):
+    """Add a comment to a group scratchpad entry block."""
+    g_dir = _group_dir(group_id)
+    if not g_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
+    sp = CompanionScratchpad(g_dir, "Group")
+    try:
+        data = await asyncio.to_thread(sp.add_comment, entry_id, req.text, author=req.author or "Marcel")
+        return {"success": True, "scratchpad": data}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

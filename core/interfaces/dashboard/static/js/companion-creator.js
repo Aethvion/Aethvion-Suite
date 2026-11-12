@@ -5696,21 +5696,57 @@ const CompanionCreator = (() => {
 
         const blocksHtml = visible.length
             ? visible.map(e => {
+                const entryId = e.id || '';
                 const author = e.author || {};
                 const authorName = typeof author === 'object' ? (author.name || author.id || 'Companion') : String(author || 'Companion');
                 const color = (typeof author === 'object' && author.color) ? author.color : '#8b5cf6';
                 const sec = (e.section || 'Notes').replace(/^[^\w\s]+\s*/, '');
                 const ts = e.timestamp ? new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const comments = Array.isArray(e.comments) ? e.comments : [];
+                const commentsHtml = comments.length ? `
+                    <div class="gc-sp-comments">
+                        ${comments.map(c => {
+                            const ca = c.author || {};
+                            const cname = typeof ca === 'object' ? (ca.name || ca.id || 'Marcel') : String(ca || 'Marcel');
+                            const ccolor = (typeof ca === 'object' && ca.color) ? ca.color : '#10b981';
+                            const cts = c.timestamp ? new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                            return `<div class="gc-sp-comment">
+                                <span class="gc-sp-comment-author" style="color:${_esc(ccolor)};">${_esc(cname)}</span>
+                                <span class="gc-sp-comment-text">${_esc(c.text || '')}</span>
+                                ${cts ? `<span class="gc-sp-comment-time">${cts}</span>` : ''}
+                            </div>`;
+                        }).join('')}
+                    </div>
+                ` : '';
                 return `
-                    <div class="gc-sp-block" style="--sp-accent:${_esc(color)};">
+                    <div class="gc-sp-block" data-entry-id="${_esc(entryId)}" style="--sp-accent:${_esc(color)};">
                         <div class="gc-sp-block-meta">
                             <span class="gc-sp-author-pill" style="background:${_esc(color)}22; color:${_esc(color)}; border-color:${_esc(color)}44;">
                                 ${_esc(authorName)}
                             </span>
                             <span class="gc-sp-sec-tag">${_esc(sec)}</span>
                             ${ts ? `<span class="gc-sp-time">${ts}</span>` : ''}
+                            ${entryId ? `
+                                <span class="gc-sp-block-actions">
+                                    <button type="button" class="gc-sp-action-btn gc-sp-comment-toggle" data-entry-id="${_esc(entryId)}" title="Comment on block">
+                                        <i class="far fa-comment"></i>
+                                    </button>
+                                    <button type="button" class="gc-sp-action-btn gc-sp-delete-btn" data-entry-id="${_esc(entryId)}" title="Remove block">
+                                        <i class="fas fa-trash-can"></i>
+                                    </button>
+                                </span>
+                            ` : ''}
                         </div>
                         <div class="gc-sp-block-text">${_esc(e.text || '')}</div>
+                        ${commentsHtml}
+                        ${entryId ? `
+                            <div class="gc-sp-comment-form hidden" data-comment-form="${_esc(entryId)}">
+                                <input type="text" class="gc-sp-comment-input" data-comment-input="${_esc(entryId)}" placeholder="Write a comment…" />
+                                <button type="button" class="gc-sp-comment-send" data-entry-id="${_esc(entryId)}" title="Post comment">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('')
@@ -5719,7 +5755,50 @@ const CompanionCreator = (() => {
         return `${tabsHtml}<div class="gc-sp-blocks">${blocksHtml}</div>`;
     }
 
-    document.addEventListener('click', (e) => {
+    async function _submitSpBlockComment(entryId) {
+        if (!entryId || !_activeGroupId) return;
+        const input = document.querySelector(`.gc-sp-comment-input[data-comment-input="${CSS.escape(entryId)}"]`);
+        const text = (input?.value || '').trim();
+        if (!text) return;
+        input.value = '';
+        try {
+            const res = await fetch(`${GROUPS_API}/${_activeGroupId}/scratchpad/entries/${encodeURIComponent(entryId)}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, author: 'Marcel' })
+            });
+            if (res.ok) await _refreshGroupScratchpad(_activeGroupId);
+        } catch {}
+    }
+
+    document.addEventListener('click', async (e) => {
+        const delBtn = e.target.closest?.('.gc-sp-delete-btn');
+        if (delBtn && _activeGroupId) {
+            const entryId = delBtn.dataset.entryId;
+            if (!entryId) return;
+            try {
+                const res = await fetch(`${GROUPS_API}/${_activeGroupId}/scratchpad/entries/${encodeURIComponent(entryId)}`, { method: 'DELETE' });
+                if (res.ok) await _refreshGroupScratchpad(_activeGroupId);
+            } catch {}
+            return;
+        }
+        const commentToggle = e.target.closest?.('.gc-sp-comment-toggle');
+        if (commentToggle) {
+            const entryId = commentToggle.dataset.entryId;
+            const form = document.querySelector(`.gc-sp-comment-form[data-comment-form="${CSS.escape(entryId)}"]`);
+            if (form) {
+                form.classList.toggle('hidden');
+                if (!form.classList.contains('hidden')) {
+                    form.querySelector('.gc-sp-comment-input')?.focus();
+                }
+            }
+            return;
+        }
+        const commentSend = e.target.closest?.('.gc-sp-comment-send');
+        if (commentSend) {
+            await _submitSpBlockComment(commentSend.dataset.entryId);
+            return;
+        }
         const addTopicBtn = e.target.closest?.('#gc-sp-add-topic-btn');
         if (addTopicBtn) {
             const name = (prompt('New scratchpad topic tab name:') || '').trim();
@@ -5746,6 +5825,13 @@ const CompanionCreator = (() => {
             input.placeholder = _groupScratchpadTab === 'all'
                 ? 'Add note to Group Scratchpad…'
                 : `Add note to "${_groupScratchpadTab}"…`;
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.classList?.contains('gc-sp-comment-input')) {
+            e.preventDefault();
+            _submitSpBlockComment(e.target.dataset.commentInput);
         }
     });
 

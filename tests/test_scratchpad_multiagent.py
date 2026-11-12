@@ -35,5 +35,24 @@ def test_multiagent_scratchpad():
         assert entries[1]['text'] == 'Brand new idea typed by Marcel without badge'
         print('MULTIAGENT SCRATCHPAD TEST PASSED PERFECTLY!')
 
+
+def test_scratchpad_block_comments_and_delete():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sp = CompanionScratchpad(Path(tmpdir), 'Group')
+        initial = sp.load()
+        assert initial['entries'] == []
+        assert initial['sections'] == []
+
+        appended = sp.append_note('Add timeline scrubber', section='Architecture', author='Marcel')
+        entry_id = appended['entry']['id']
+
+        commented = sp.add_comment(entry_id, 'Looks clean!', author='Marcel')
+        assert len(commented['entries']) == 1
+        assert len(commented['entries'][0]['comments']) == 1
+        assert commented['entries'][0]['comments'][0]['text'] == 'Looks clean!'
+
+        after_delete = sp.delete_entry(entry_id)
+        assert after_delete['entries'] == []
+
 if __name__ == '__main__':
     test_multiagent_scratchpad()
