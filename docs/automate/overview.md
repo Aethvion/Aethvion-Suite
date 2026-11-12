@@ -1,8 +1,8 @@
 # Automate — Visual Workflow Builder
 
-**Last Updated:** 2026-05-26
+**Last Updated:** 2026-11-12
 
-Automate is Aethvion Suite's node-based workflow builder. You connect nodes on a visual canvas to create automation pipelines — no code required. Workflows run locally on your machine, with AI, file system, web, and data operations all available as drag-and-drop nodes.
+Automate is Aethvion Suite's node-based workflow builder. You connect nodes on a visual canvas to create automation pipelines — no code required. Workflows run locally on your machine, with AI, Model Hub endpoints (text, image, 3D mesh, audio), Asset Library lineage, file system, web, and data operations all available as drag-and-drop nodes.
 
 ---
 
@@ -261,6 +261,22 @@ Connect to external services and companions.
 
 ---
 
+### Model Hub, Asset Library & Engine v2 Nodes
+
+Engine v2 adds capability-based **Model Hub** endpoints (`core/modelhub/`), typed **Asset Library** lineage (`core/assets/`), sub-workflows, and control flow:
+
+| Category | Nodes |
+|---|---|
+| **Model Hub & 3D** | `model.run`, `model3d.generate`, `model3d.texture`, `mesh.inspect`, `quality.verify` |
+| **Assets** | `asset.save`, `asset.load`, `asset.export`, `input.image` |
+| **Flow Control** | `flow.input`, `flow.return`, `flow.subworkflow`, `flow.for_each`, `flow.retry_until` |
+
+- **Executor v2 features**: Run IDs, **Stop** button cancellation, dead-branch pruning, sub-workflows, run history, and automatic skipping of nodes whose wired input never arrived.
+- `ai.generate_image` now routes through the Model Hub (`llm`, `suite-image`, `suite-3d`, `http`, `command`, and `demo` adapters).
+- **Game-dev example workflows**: Bundled under `core/automate/config/gamedev_*.json` (including `gamedev_image_to_3d.json`, `gamedev_3d_prop_pipeline.json`, `gamedev_3d_prop_ai_review.json`, `gamedev_3d_prop_retry.json`, `gamedev_batch_props.json`, `gamedev_make_prop_sub.json`).
+
+---
+
 ## Example Workflows
 
 Six example workflows ship with Automate and are accessible from the **Examples** button in the sidebar panel. They demonstrate common patterns and serve as starting points.
@@ -370,8 +386,11 @@ The `executor.py` file itself never needs to change when adding new nodes.
 | Path | Contents |
 |---|---|
 | `core/automate/` | Executor, compiler, routes |
-| `core/automate/nodes/` | Node handler implementations (one file per category) |
+| `core/automate/nodes/` | Node handler implementations (one file per category: `ai.py`, `assets.py`, `flow.py`, `media.py`, `models.py`, etc.) |
+| `core/automate/config/` | Bundled game-dev pipeline workflow JSONs (`gamedev_*.json`) |
 | `core/automate/examples/` | Bundled example workflow JSON files |
+| `core/modelhub/` | Capability-based Model Hub (`hub.py`, `registry.py`, `adapters.py`, `capabilities.py`, `glb.py`, `modelhub_routes.py`) |
+| `core/assets/` | Typed Asset Library with lineage (`store.py`, `values.py`, `asset_routes.py`) |
 | `data/automate/` | User-created workflow JSON files |
 | `core/interfaces/dashboard/static/js/mode-automate.js` | Frontend canvas, node rendering, SSE streaming client |
 | `core/interfaces/dashboard/static/css/automate.css` | Canvas and node styles |
