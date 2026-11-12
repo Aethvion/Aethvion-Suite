@@ -275,7 +275,7 @@ async function loadDocumentation(force = false) {
 }
 
 const docStyles = `
-#documentation-panel {
+#documentation-panel.active {
     display: flex !important;
     flex-direction: column;
     height: 100%;
