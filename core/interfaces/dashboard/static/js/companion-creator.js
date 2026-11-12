@@ -5366,7 +5366,9 @@ const CompanionCreator = (() => {
                 if (_activeGroupData && Array.isArray(_activeGroupData.history)) {
                     _markGroupRead(groupId, _activeGroupData.history.length);
                 }
-                if (ev.message.author_role === 'companion') _refreshGroupScratchpad(groupId);
+                if (ev.message.author_role === 'companion' || ev.message.author_role === 'agent') {
+                    _refreshGroupScratchpad(groupId);
+                }
             } else if (ev.type === 'typing') {
                 if (ev.active) _groupTypers.set(ev.companion_id, ev.name || ev.companion_id);
                 else _groupTypers.delete(ev.companion_id);
@@ -5424,19 +5426,21 @@ const CompanionCreator = (() => {
             return `<div class="gc-system-pill">${_esc(m.content)}</div>`;
         }
         const isUser = m.author_role === 'user' || m.author_id === 'marcel';
-        const color = m.accent_color || (isUser ? '#10b981' : '#6366f1');
+        const isAgent = m.author_role === 'agent';
+        const color = m.accent_color || (isUser ? '#10b981' : (isAgent ? '#38bdf8' : '#6366f1'));
         const timeStr = m.timestamp ? (new Date(m.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         const bubbleStyle = isUser
             ? 'background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);'
             : `background: ${color}14; border-color: ${color}38; box-shadow: 0 4px 14px ${color}10;`;
         const reactions = Array.isArray(m.reactions) ? m.reactions : [];
         return `
-            <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${bubbleStyle}" data-msg-id="${_esc(m.id || '')}" data-reactions="${_esc(JSON.stringify(reactions))}">
+            <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}${isAgent ? ' is-agent' : ''}" style="${bubbleStyle}" data-msg-id="${_esc(m.id || '')}" data-reactions="${_esc(JSON.stringify(reactions))}">
                 <div class="gc-msg-header">
                     <span class="gc-msg-author" style="color:${color};">
                         ${_renderGroupAvatar(m.author_id, m.author_name, isUser ? '👤' : m.avatar_symbol, color, 28)}
                         <span>${_esc(m.author_name || m.author_id)}</span>
                     </span>
+                    ${isAgent ? '<span class="gc-msg-badge" style="background:rgba(56,189,248,0.16); color:#38bdf8; border:1px solid rgba(56,189,248,0.35);">Agent</span>' : ''}
                     ${m.mood ? `<span class="gc-msg-badge">${_esc(m.mood)}</span>` : ''}
                     <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
                 </div>

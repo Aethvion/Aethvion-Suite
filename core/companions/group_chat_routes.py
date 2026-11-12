@@ -62,6 +62,16 @@ class GroupMessageRequest(BaseModel):
     attachments: Optional[List[Dict[str, Any]]] = None
 
 
+class AgentMessageRequest(BaseModel):
+    content: str
+    author_id: Optional[str] = "antigravity"
+    author_name: Optional[str] = "Antigravity"
+    avatar_symbol: Optional[str] = "◈"
+    accent_color: Optional[str] = "#38bdf8"
+    attachments: Optional[List[Dict[str, Any]]] = None
+    trigger_replies: Optional[bool] = True
+
+
 class CompanionTurnRequest(BaseModel):
     companion_id: str
     reason: Optional[str] = "manual"
@@ -165,6 +175,39 @@ async def post_user_message(group_id: str, req: GroupMessageRequest):
             "success": True,
             "message": msg,
             "mentioned_companions": mentioned,
+            "responders": [r["id"] for r in responders],
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{group_id}/agent-message")
+async def post_agent_message(group_id: str, req: AgentMessageRequest):
+    """Post a message from an external agent (e.g. Antigravity) into the group chat."""
+    try:
+        msg = await asyncio.to_thread(
+            GroupChatEngine.post_agent_message,
+            group_id=group_id,
+            content=req.content,
+            author_id=req.author_id or "antigravity",
+            author_name=req.author_name or "Antigravity",
+            avatar_symbol=req.avatar_symbol or "◈",
+            accent_color=req.accent_color or "#38bdf8",
+            attachments=req.attachments,
+        )
+        conductor = get_conductor()
+        conductor.ensure_started()
+        responders = []
+        if req.trigger_replies:
+            room = conductor.room(group_id)
+            room.energy = max(room.energy, 0.85)
+            room.streak = 0
+            responders = conductor.on_message(group_id, msg)
+        else:
+            conductor._emit(conductor.room(group_id), {"type": "message", "message": msg})
+        return {
+            "success": True,
+            "message": msg,
             "responders": [r["id"] for r in responders],
         }
     except ValueError as e:

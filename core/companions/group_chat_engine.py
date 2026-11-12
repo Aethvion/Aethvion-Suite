@@ -529,6 +529,40 @@ class GroupChatEngine:
         return msg
 
     @staticmethod
+    def post_agent_message(
+        group_id: str,
+        content: str,
+        author_id: str = "antigravity",
+        author_name: str = "Antigravity",
+        avatar_symbol: str = "◈",
+        accent_color: str = "#38bdf8",
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Post a message into a group chat from an external coding/engineering agent."""
+        meta = _load_meta(group_id)
+        if not meta:
+            raise ValueError(f"Group chat '{group_id}' not found")
+
+        members = meta.get("members", [])
+        mentions = extract_mentions(content, members)
+        msg_id = f"msg_{uuid.uuid4().hex[:6]}"
+        msg = {
+            "id": msg_id,
+            "author_id": author_id or "antigravity",
+            "author_name": author_name or "Antigravity",
+            "author_role": "agent",
+            "avatar_symbol": avatar_symbol or "◈",
+            "accent_color": accent_color or "#38bdf8",
+            "content": content.strip(),
+            "timestamp": utcnow_iso(),
+            "mentions": mentions,
+            "attachments": attachments or [],
+            "source": "external_agent",
+        }
+        append_history_message(group_id, msg)
+        return msg
+
+    @staticmethod
     async def generate_companion_turn(
         group_id: str,
         companion_id: str,

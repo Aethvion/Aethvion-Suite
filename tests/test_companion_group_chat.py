@@ -229,3 +229,34 @@ def test_group_chat_send_message_from_bridge(tmp_path, monkeypatch):
     assert posted["author_role"] == "companion"
     assert posted["source"] == "1on1_bridge"
     assert "misakacipher" in posted["mentions"]
+
+
+def test_group_chat_agent_message_and_cli(tmp_path, monkeypatch, capsys):
+    test_groups_dir = tmp_path / "groups"
+    monkeypatch.setattr("core.companions.group_chat_engine.GROUPS_DIR", test_groups_dir)
+    monkeypatch.setattr("core.utils.paths.COMPANION_GROUPS", test_groups_dir)
+    monkeypatch.setattr("core.bridges.group_chat_bridge.COMPANION_GROUPS", test_groups_dir)
+
+    group = GroupChatEngine.create_group(
+        title="Feature Brainstorm",
+        companion_ids=["misakacipher"],
+    )
+    gid = group["id"]
+
+    from core.companions import group_bridge_cli
+    # Force offline fallback in unit test (no live server call)
+    monkeypatch.setattr(group_bridge_cli, "_http_json", lambda *a, **kw: None)
+
+    assert group_bridge_cli.main(["send", "Feature Brainstorm", "Looks feasible! @Misaka"]) == 0
+    assert group_bridge_cli.main(["scratchpad", "Feature Brainstorm", "Use SSE + local cache", "--section", "Architecture"]) == 0
+    assert group_bridge_cli.main(["read", "Feature Brainstorm"]) == 0
+
+    out = capsys.readouterr().out
+    assert "Antigravity [agent]: Looks feasible! @Misaka" in out
+    assert "Use SSE + local cache" in out
+
+    loaded = GroupChatEngine.get_group(gid)
+    last_msg = loaded["history"][-1]
+    assert last_msg["author_id"] == "antigravity"
+    assert last_msg["author_role"] == "agent"
+    assert "misakacipher" in last_msg["mentions"]
