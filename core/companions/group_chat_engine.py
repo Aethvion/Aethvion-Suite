@@ -638,16 +638,16 @@ class GroupChatEngine:
             f"- **Address and ping others naturally**: You are encouraged to speak directly to fellow members and use @mentions (e.g. @Lyra, @Axiom, @Marcel) when asking questions, agreeing, building on their ideas, or playfully debating.\n"
             f"- **Respond to your mentions**: If you were asked or mentioned in the recent dialogue, answer directly from your unique perspective and expertise.\n"
             f"- **Add your unique angle**: Don't just repeat what others said. Bring your own distinct background, ideas, and personality into the room.\n"
-            f"- **ACT WITH TOOLS IMMEDIATELY (CRITICAL - DO NOT JUST PROMISE)**: When someone asks for or suggests YouTube videos, songs, web searches, or PC information, DO NOT just say 'I am searching for it' or 'Let me find some'. YOU MUST CALL THE TOOL IN THIS VERY MESSAGE! For example, emit: [tool:bridge module=\"youtube_link\" cmd=\"search_videos\" query=\"...\"] or [tool:bridge module=\"spotify\" cmd=\"play\" target=\"...\"] or [tool:bridge module=\"web_search\" cmd=\"search\" query=\"...\"]. The system will run the search and give you the real URLs and titles to share with everyone.\n"
-            f"- **INCLUDE FULL MEDIA URLS**: When recommending or sharing a YouTube video or Spotify track, always include the full watch URL (https://www.youtube.com/watch?v=...) or track URL so the interactive, playable player embeds directly in the group chat.\n"
-            f"- **Collaborative Scratchpad**: To record an idea, task, or note onto our shared group scratchpad, use [tool:companion_scratchpad cmd=\"append\" text=\"...\"] (or [tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]) — it will be recorded into the shared group canvas with your author attribution.\n"
+            f"- **Tool Restraint (CRITICAL)**: ONLY call external tools (`youtube_link`, `spotify`, `web_search`, etc.) when Marcel or another member EXPLICITLY asks for a video, song, or web search, or when you genuinely need live PC/web data to answer. NEVER attach unsolicited YouTube searches or tool calls to normal brainstorming or casual conversation.\n"
+            f"- **When a tool IS explicitly needed, call it directly**: Do not say 'I am searching for it' without emitting the tag — emit `[tool:bridge module=\"...\" cmd=\"...\" ...]` in that turn. Always use `[tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]` (never `[tool:companion_scratchpad ...]`) to add notes to the Group Scratchpad.\n"
+            f"- **INCLUDE FULL MEDIA URLS**: Only when sharing a requested YouTube video or Spotify track, include the full watch URL (https://www.youtube.com/watch?v=...) or track URL so the playable player embeds in chat.\n"
             + (_NATURAL_STYLE_RULES if natural else
                "- **Keep it conversational**: Deliver your thought in 1 to 2 engaging, natural paragraphs.\n\n")
             + (f"{bridges_block}\n\n" if bridges_block else "")
             + f"Recent Group Conversation:\n{conv_transcript}\n\n"
             + (f"Current local time: {datetime.datetime.now().strftime('%A %H:%M')}\n"
                f"{_natural_task(cfg.name, trigger_reason)}" if natural else
-               f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant. If requested or searching for media, emit the tool tag now.")
+               f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant. Only emit a tool tag if explicitly asked or genuinely needed.")
         )
 
         pm = get_provider_manager()
@@ -716,7 +716,7 @@ class GroupChatEngine:
                     f"{prompt}\n\n"
                     f"## Tool Execution Results:\n"
                     + "\n".join(round_results)
-                    + f"\n\nTask: Deliver your reply in character as {cfg.name} incorporating the findings, links, or media above directly into your response. Include the full URL (e.g. YouTube watch link https://www.youtube.com/watch?v=... or Spotify track link) so the interactive embed renders in the chat!"
+                    + f"\n\nTask: Deliver your reply in character as {cfg.name} incorporating the findings, links, or media above directly into your response. Do NOT emit any `[tool:...]` tags in this follow-up reply. Include the full URL (e.g. YouTube watch link https://www.youtube.com/watch?v=... or Spotify track link) if media was requested so the interactive embed renders in the chat."
                 )
                 r2 = await asyncio.to_thread(
                     pm.call_with_failover,
@@ -741,6 +741,7 @@ class GroupChatEngine:
 
         parts_src = re.sub(r"<(?:expression|mood)[^>]*>.*?</(?:expression|mood)>", " ", content,
                            flags=re.DOTALL | re.IGNORECASE)
+        parts_src = re.sub(r"\[tool:[^\]]*\]", "", parts_src, flags=re.IGNORECASE)
         parts_src = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", parts_src, flags=re.IGNORECASE)
         bubbles = [b.strip() for b in re.split(r"<break\s*/?>|</break>", parts_src, flags=re.IGNORECASE) if b.strip()]
         if not natural or len(bubbles) <= 1:

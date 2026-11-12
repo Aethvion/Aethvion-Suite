@@ -21,6 +21,8 @@ const CompanionCreator = (() => {
     let _groupPacingPaused = false;
     let _groupTurnInProgress = false;
     let _groupScratchpadOpen = true;
+    let _groupScratchpadTab = 'all';
+    let _groupScratchpadData = null;
     let _groupEventSource = null;        // live event stream of the open group
     let _groupSeenIds = new Set();       // message ids already on screen
     let _groupTypers = new Map();        // companion id -> name, currently typing
@@ -5600,7 +5602,7 @@ const CompanionCreator = (() => {
                 <div class="gc-scratchpad-drawer ${_groupScratchpadOpen ? '' : 'collapsed'}" id="gc-scratchpad-drawer">
                     <div class="gc-sp-header">
                         <span style="display:flex; align-items:center; gap:0.4rem;">
-                            <i class="fas fa-lightbulb" style="color:#f59e0b;"></i> Group Brainstorming Scratchpad
+                            <i class="fas fa-layer-group" style="color:#f59e0b;"></i> Group Scratchpad
                         </span>
                         <div style="display:flex; gap:0.35rem;">
                             <button type="button" class="cc-btn cc-btn-ghost cc-btn-sm" title="Clear Scratchpad" onclick="window._groupChatClearScratchpad('${_esc(group.id)}')">
@@ -5612,10 +5614,10 @@ const CompanionCreator = (() => {
                         </div>
                     </div>
                     <div class="gc-sp-body" id="gc-sp-body">
-                        ${_renderGroupScratchpadHTML(group.scratchpad_summary?.plain_text || '')}
+                        ${_renderGroupScratchpadHTML(group.scratchpad_summary || { entries: [] })}
                     </div>
                     <div class="gc-sp-add-form">
-                        <input type="text" id="gc-sp-note-input" class="cc-search-input" placeholder="Add idea to group scratchpad…" style="flex:1; border:1px solid var(--border); border-radius:6px; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.25); color:#fff;" />
+                        <input type="text" id="gc-sp-note-input" class="cc-search-input" placeholder="Add note to Group Scratchpad…" style="flex:1; border:1px solid var(--border); border-radius:6px; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.25); color:#fff;" />
                         <button type="button" id="gc-sp-add-btn" class="cc-btn cc-btn-primary cc-btn-sm">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -5637,21 +5639,86 @@ const CompanionCreator = (() => {
         return history.map(_groupMsgCardHTML).join('');
     }
 
-    function _renderGroupScratchpadHTML(rawText) {
-        if (!rawText || !rawText.trim()) {
-            return '<div style="color:var(--text-secondary); font-style:italic; padding:0.5rem 0;">Scratchpad is empty. Add ideas below or companions can append mechanics during chat!</div>';
+    function _renderGroupScratchpadHTML(spInput) {
+        if (typeof spInput === 'string') {
+            if (!spInput.trim()) {
+                return '<div class="gc-sp-empty">Group Scratchpad is empty.</div>';
+            }
+            const lines = spInput.split('\n');
+            return lines.map(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('- ')) return `<div class="gc-sp-block">${_esc(trimmed.slice(2))}</div>`;
+                return trimmed ? `<div class="gc-sp-block">${_esc(trimmed)}</div>` : '';
+            }).join('');
         }
-        // Basic line-by-line renderer with bold headings
-        const lines = rawText.split('\n');
-        return lines.map(line => {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('# ')) return `<h3 style="color:#f8fafc; font-size:0.95rem; margin:0.6rem 0 0.3rem 0;">${_esc(trimmed.slice(2))}</h3>`;
-            if (trimmed.startsWith('## ')) return `<h4 style="color:#a78bfa; font-size:0.86rem; margin:0.5rem 0 0.25rem 0;">${_esc(trimmed.slice(3))}</h4>`;
-            if (trimmed.startsWith('### ')) return `<h5 style="color:#cbd5e1; font-size:0.8rem; margin:0.4rem 0 0.2rem 0;">${_esc(trimmed.slice(4))}</h5>`;
-            if (trimmed.startsWith('- ')) return `<div style="padding-left:0.5rem; margin:0.2rem 0;">• ${_esc(trimmed.slice(2))}</div>`;
-            return trimmed ? `<div>${_esc(trimmed)}</div>` : '<div style="height:0.4rem;"></div>';
+
+        const sp = spInput || {};
+        _groupScratchpadData = sp;
+        const entries = Array.isArray(sp.entries) ? sp.entries : [];
+        if (!entries.length) {
+            return '<div class="gc-sp-empty">Group Scratchpad is empty.</div>';
+        }
+
+        const sections = [];
+        entries.forEach(e => {
+            const sec = e.section || 'Notes';
+            if (!sections.includes(sec)) sections.push(sec);
+        });
+        if (_groupScratchpadTab !== 'all' && !sections.includes(_groupScratchpadTab)) {
+            _groupScratchpadTab = 'all';
+        }
+
+        const tabsHtml = `
+            <div class="gc-sp-tabs">
+                <button type="button" class="gc-sp-tab ${_groupScratchpadTab === 'all' ? 'active' : ''}" data-sp-tab="all">
+                    All <span class="gc-sp-tab-count">${entries.length}</span>
+                </button>
+                ${sections.map(sec => {
+                    const count = entries.filter(e => (e.section || 'Notes') === sec).length;
+                    const shortLabel = sec.replace(/^[^\w\s]+\s*/, '');
+                    return `<button type="button" class="gc-sp-tab ${_groupScratchpadTab === sec ? 'active' : ''}" data-sp-tab="${_esc(sec)}" title="${_esc(sec)}">
+                        ${_esc(shortLabel)} <span class="gc-sp-tab-count">${count}</span>
+                    </button>`;
+                }).join('')}
+            </div>
+        `;
+
+        const visible = _groupScratchpadTab === 'all'
+            ? entries
+            : entries.filter(e => (e.section || 'Notes') === _groupScratchpadTab);
+
+        const blocksHtml = visible.map(e => {
+            const author = e.author || {};
+            const authorName = typeof author === 'object' ? (author.name || author.id || 'Companion') : String(author || 'Companion');
+            const color = (typeof author === 'object' && author.color) ? author.color : '#8b5cf6';
+            const sec = (e.section || 'Notes').replace(/^[^\w\s]+\s*/, '');
+            const ts = e.timestamp ? new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            return `
+                <div class="gc-sp-block" style="--sp-accent:${_esc(color)};">
+                    <div class="gc-sp-block-meta">
+                        <span class="gc-sp-author-pill" style="background:${_esc(color)}22; color:${_esc(color)}; border-color:${_esc(color)}44;">
+                            ${_esc(authorName)}
+                        </span>
+                        <span class="gc-sp-sec-tag">${_esc(sec)}</span>
+                        ${ts ? `<span class="gc-sp-time">${ts}</span>` : ''}
+                    </div>
+                    <div class="gc-sp-block-text">${_esc(e.text || '')}</div>
+                </div>
+            `;
         }).join('');
+
+        return `${tabsHtml}<div class="gc-sp-blocks">${blocksHtml}</div>`;
     }
+
+    document.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest?.('.gc-sp-tab');
+        if (!tabBtn) return;
+        _groupScratchpadTab = tabBtn.dataset.spTab || 'all';
+        const spBody = document.getElementById('gc-sp-body');
+        if (spBody && _groupScratchpadData) {
+            spBody.innerHTML = _renderGroupScratchpadHTML(_groupScratchpadData);
+        }
+    });
 
     function _initGroupChatEvents(group) {
         const msgsScroll = document.getElementById('gc-msgs-scroll');
@@ -5797,9 +5864,8 @@ const CompanionCreator = (() => {
             if (!res.ok) return;
             const d = await res.json();
             const sp = d.scratchpad || {};
-            const pt = sp.plain_text || sp.content || '';
             const spBody = document.getElementById('gc-sp-body');
-            if (spBody) spBody.innerHTML = _renderGroupScratchpadHTML(pt);
+            if (spBody) spBody.innerHTML = _renderGroupScratchpadHTML(sp);
             const badge = document.getElementById('gc-sp-badge');
             if (badge) badge.textContent = sp.entries ? sp.entries.length : 0;
         } catch {}
@@ -6005,7 +6071,7 @@ const CompanionCreator = (() => {
     };
 
     window._groupChatClearScratchpad = async function(groupId) {
-        if (!confirm('Reset the group brainstorming scratchpad back to the template?')) return;
+        if (!confirm('Clear the Group Scratchpad?')) return;
         try {
             await fetch(`${GROUPS_API}/${groupId}/scratchpad/clear`, { method: 'POST' });
             await _refreshGroupScratchpad(groupId);

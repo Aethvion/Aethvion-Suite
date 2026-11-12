@@ -151,11 +151,12 @@ class CompanionScratchpad(CompanionComponent):
     def _initialize_if_missing(self) -> None:
         with self._lock:
             if not self._ledger_file.exists() and not self._md_file.exists():
+                is_group = self._name == "Group"
                 init_ledger = {
                     "version": 2,
-                    "title": "Shared Brainstorming Scratchpad",
-                    "subtitle": f"A live co-working canvas for Marcel and {self._name}. Jot down ideas, mechanics, and plans here.",
-                    "sections": [
+                    "title": "Group Scratchpad" if is_group else "Shared Brainstorming Scratchpad",
+                    "subtitle": "" if is_group else f"A live co-working canvas for Marcel and {self._name}. Jot down ideas, mechanics, and plans here.",
+                    "sections": [] if is_group else [
                         "💡 Ideas & Brainstorming",
                         "🛠️ Game & Feature Mechanics",
                         "📌 Quick Notes & Next Steps"
@@ -268,14 +269,16 @@ class CompanionScratchpad(CompanionComponent):
 
     def _render_ledger_to_md(self, ledger: Dict[str, Any]) -> str:
         """Render structured ledger entries into a clean markdown document with embedded author pills."""
-        title = ledger.get("title", "Shared Brainstorming Scratchpad")
-        subtitle = ledger.get("subtitle", f"A live co-working canvas for Marcel and {self._name}.")
+        entries = ledger.get("entries") or []
+        if self._name == "Group" and not entries:
+            return ""
+        title = ledger.get("title", "Group Scratchpad" if self._name == "Group" else "Shared Brainstorming Scratchpad")
+        subtitle = ledger.get("subtitle", "" if self._name == "Group" else f"A live co-working canvas for Marcel and {self._name}.")
         sections = ledger.get("sections") or [
             "💡 Ideas & Brainstorming",
             "🛠️ Game & Feature Mechanics",
             "📌 Quick Notes & Next Steps"
         ]
-        entries = ledger.get("entries") or []
 
         # Group entries by section
         entries_by_section: Dict[str, List[Dict[str, Any]]] = {}

@@ -2882,6 +2882,98 @@
     flex-shrink: 0;
     box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.65);
 }
+
+/* Group Scratchpad workspace tabs & hover-highlighted blocks */
+.gc-sp-empty {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.82rem;
+    padding: 1rem 0.25rem;
+    text-align: center;
+}
+.gc-sp-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.gc-sp-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: #94a3b8;
+    font-size: 0.73rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.gc-sp-tab:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.07);
+}
+.gc-sp-tab.active {
+    color: #f8fafc;
+    background: rgba(139, 92, 246, 0.18);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+.gc-sp-tab-count {
+    font-size: 0.66rem;
+    opacity: 0.8;
+}
+.gc-sp-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.gc-sp-block {
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 3px solid var(--sp-accent, #8b5cf6);
+    background: rgba(255, 255, 255, 0.025);
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.gc-sp-block:hover {
+    background: rgba(255, 255, 255, 0.065);
+    border-color: var(--sp-accent, #8b5cf6);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transform: translateY(-1px);
+}
+.gc-sp-block-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    flex-wrap: wrap;
+}
+.gc-sp-author-pill {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+}
+.gc-sp-sec-tag {
+    font-size: 0.68rem;
+    color: #94a3b8;
+}
+.gc-sp-time {
+    margin-left: auto;
+    font-size: 0.66rem;
+    color: #64748b;
+}
+.gc-sp-block-text {
+    font-size: 0.81rem;
+    line-height: 1.45;
+    color: #e2e8f0;
+    word-break: break-word;
+}
 .cc-group-avatar {
     width: 32px;
     height: 32px;
