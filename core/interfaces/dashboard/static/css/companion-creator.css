@@ -3305,3 +3305,34 @@
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
 }
 
+
+/* ── Group chat: natural pacing (typing dots, reactions, ambient toggle) ── */
+.gc-typing-dots { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: middle; }
+.gc-typing-dots i {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; opacity: 0.35;
+    animation: gc-typing-bounce 1.2s infinite ease-in-out;
+}
+.gc-typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+.gc-typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes gc-typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+    30% { transform: translateY(-3px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .gc-typing-dots i { animation: none; opacity: 0.7; } }
+
+.gc-reactions-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.gc-reaction-pill {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 7px; border-radius: 10px; font-size: 0.82rem; line-height: 1.5;
+    background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fff) 14%, transparent);
+    cursor: default;
+}
+.gc-reaction-pill b { font-size: 0.7rem; font-weight: 600; opacity: 0.8; }
+
+.gc-ambient-toggle {
+    display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
+    font-size: 0.72rem; color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+}
+.gc-ambient-toggle input { accent-color: var(--primary); margin: 0; }

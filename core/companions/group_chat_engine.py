@@ -11,6 +11,7 @@ import asyncio
 import datetime
 import json
 import re
+import threading
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -80,6 +81,93 @@ def _save_history(group_id: str, messages: List[Dict[str, Any]]) -> None:
     atomic_json_write(_history_path(group_id), {"messages": messages})
 
 
+_HISTORY_LOCK = threading.RLock()
+
+NATURAL_PACES = ("natural", "lively", "quiet")
+VALID_PACES = NATURAL_PACES + ("manual",)
+
+
+def append_history_message(group_id: str, msg: Dict[str, Any]) -> None:
+    """Append one message to a group's history. Safe when several companions post at once."""
+    with _HISTORY_LOCK:
+        hist = _load_history(group_id)
+        hist.append(msg)
+        _save_history(group_id, hist)
+
+
+def add_reaction(group_id: str, message_id: str, emoji: str, by_id: str, by_name: str) -> Optional[Dict[str, Any]]:
+    """Attach an emoji reaction to a message. Returns the updated message, or None if not found."""
+    with _HISTORY_LOCK:
+        hist = _load_history(group_id)
+        for m in reversed(hist):
+            if m.get("id") == message_id:
+                reactions = m.setdefault("reactions", [])
+                if not any(r.get("by") == by_id and r.get("emoji") == emoji for r in reactions):
+                    reactions.append({"emoji": emoji, "by": by_id, "by_name": by_name})
+                    _save_history(group_id, hist)
+                return m
+    return None
+
+
+def effective_pace(settings: Optional[Dict[str, Any]]) -> str:
+    """Pace of a group. Groups created before paces existed map from their old speed value."""
+    settings = settings or {}
+    pace = settings.get("pace")
+    if pace in VALID_PACES:
+        return pace
+    try:
+        if float(settings.get("chat_speed_seconds", 3.0)) == 0:
+            return "manual"
+    except (TypeError, ValueError):
+        pass
+    return "natural"
+
+
+def _parse_ts(ts: Optional[str]) -> Optional[datetime.datetime]:
+    if not ts:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _gap_label(seconds: float) -> str:
+    def unit(n: float, word: str) -> str:
+        n = max(1, int(round(n)))
+        return f"{n} {word}{'' if n == 1 else 's'} later"
+    if seconds < 3600:
+        return unit(seconds / 60, "minute")
+    if seconds < 86400:
+        return unit(seconds / 3600, "hour")
+    return unit(seconds / 86400, "day")
+
+
+def format_transcript(messages: List[Dict[str, Any]], now: Optional[datetime.datetime] = None) -> str:
+    """Render recent messages as plain text, marking long silences so the model knows time passed."""
+    lines: List[str] = []
+    prev: Optional[datetime.datetime] = None
+    for m in messages:
+        ts = _parse_ts(m.get("timestamp"))
+        if ts and prev and (ts - prev).total_seconds() >= 900:
+            lines.append(f"--- {_gap_label((ts - prev).total_seconds())} ---")
+        if ts:
+            prev = ts
+        if m.get("author_role") == "system":
+            lines.append(f"[System] {m.get('content', '')}")
+            continue
+        line = f"{m.get('author_name', m.get('author_id'))}: {m.get('content', '')}"
+        reactions = m.get("reactions") or []
+        if reactions:
+            line += "  (reactions: " + ", ".join(f"{r.get('emoji')} {r.get('by_name')}" for r in reactions) + ")"
+        lines.append(line)
+    if now and prev:
+        silent = (now - prev).total_seconds()
+        if silent >= 900:
+            lines.append(f"--- the chat has been quiet for {_gap_label(silent).replace(' later', '')} ---")
+    return "\n".join(lines)
+
+
 def _build_companion_member(cid: str) -> Dict[str, Any]:
     cfg = CompanionRegistry.get_companion(cid)
     if not cfg:
@@ -125,6 +213,36 @@ def extract_mentions(content: str, members: List[Dict[str, Any]]) -> List[str]:
                 mentioned.append(m["id"])
                 break
     return mentioned
+
+
+_NATURAL_STYLE_RULES = (
+    "- **This is a chat app, not an essay**: write the way people type in a group chat. Usually ONE short message "
+    "of 1 to 3 sentences. Go longer only when someone asked you for an explanation or for real work.\n"
+    "- **Do not answer everything**: you are one of several people here. If the message was not for you, someone "
+    "else already covered it, or you have nothing new to add, reply with exactly [pass] and nothing else.\n"
+    "- **React instead of replying** when a quick acknowledgement is enough: reply with exactly [react:EMOJI] "
+    "(for example [react:\U0001F44D] or [react:\U0001F602]) and nothing else.\n"
+    "- **Do not sum up or close the conversation**, do not repeat what was just said, and do not end every "
+    "message with a question. Let silences happen.\n"
+    "- **Two bubbles**: if you naturally want to send a quick reaction and then a follow-up thought, separate "
+    "them with <break>. Use this rarely.\n\n"
+)
+
+
+def _natural_task(name: str, reason: str) -> str:
+    if reason == "mention":
+        return (f"Task: You were mentioned or asked directly. Write {name}'s next chat message. "
+                f"If a tool is needed, emit the tool tag now.")
+    if reason == "ambient":
+        return (f"Task: The chat has been quiet. As {name}, start something only if you genuinely have something "
+                f"worth saying: a thought, a follow-up on an earlier topic, something you are curious about, or a "
+                f"question for a specific person. Do not greet the room or comment on the silence. "
+                f"If you have nothing, reply with exactly [pass].")
+    if reason == "nudge":
+        return (f"Task: Marcel asked the group to keep talking. Write {name}'s next chat message, building on or "
+                f"challenging what was said. If a tool is needed, emit the tool tag now.")
+    return (f"Task: Decide as {name} whether to say something. Write your next chat message, or [react:EMOJI], "
+            f"or [pass]. If a tool is needed, emit the tool tag now.")
 
 
 class GroupChatEngine:
@@ -175,6 +293,7 @@ class GroupChatEngine:
         avatar_symbol: str = "🚀",
         accent_color: str = "#8b5cf6",
         chat_speed_seconds: float = 3.0,
+        pace: str = "natural",
     ) -> Dict[str, Any]:
         """Create a new group chat with specified companion members."""
         gid = f"gc_{uuid.uuid4().hex[:8]}"
@@ -196,9 +315,12 @@ class GroupChatEngine:
             "created_at": utcnow_iso(),
             "members": members,
             "settings": {
-                "chat_speed_seconds": max(0.5, float(chat_speed_seconds)),
+                "chat_speed_seconds": max(0.0, float(chat_speed_seconds)),
                 "auto_reply_enabled": True,
                 "max_turns_per_batch": 5,
+                "pace": "manual" if float(chat_speed_seconds) == 0 else (pace if pace in VALID_PACES else "natural"),
+                "paused": False,
+                "ambient_enabled": True,
             },
         }
         _save_meta(gid, meta)
@@ -244,16 +366,30 @@ class GroupChatEngine:
     @staticmethod
     def update_settings(group_id: str, settings: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update group chat pacing, speed, or auto-reply settings."""
+        with _HISTORY_LOCK:      # two quick changes must not overwrite each other
+            return GroupChatEngine._update_settings_locked(group_id, settings)
+
+    @staticmethod
+    def _update_settings_locked(group_id: str, settings: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         meta = _load_meta(group_id)
         if not meta:
             return None
         cur_settings = meta.setdefault("settings", {})
         if "chat_speed_seconds" in settings:
-            cur_settings["chat_speed_seconds"] = max(0.5, float(settings["chat_speed_seconds"]))
+            cur_settings["chat_speed_seconds"] = max(0.0, float(settings["chat_speed_seconds"]))
         if "auto_reply_enabled" in settings:
             cur_settings["auto_reply_enabled"] = bool(settings["auto_reply_enabled"])
         if "max_turns_per_batch" in settings:
             cur_settings["max_turns_per_batch"] = int(settings["max_turns_per_batch"])
+        if settings.get("pace") in VALID_PACES:
+            cur_settings["pace"] = settings["pace"]
+        for flag in ("paused", "ambient_enabled"):
+            if flag in settings:
+                cur_settings[flag] = bool(settings[flag])
+        for key, lo, hi in (("active_hours_start", 0, 23), ("active_hours_end", 1, 24),
+                            ("max_ambient_per_day", 0, 48), ("max_messages_per_hour", 1, 600)):
+            if key in settings:
+                cur_settings[key] = min(hi, max(lo, int(settings[key])))
         _save_meta(group_id, meta)
         return meta
 
@@ -343,9 +479,7 @@ class GroupChatEngine:
             "attachments": attachments or [],
         }
 
-        hist = _load_history(group_id)
-        hist.append(msg)
-        _save_history(group_id, hist)
+        append_history_message(group_id, msg)
 
         # Filter mentions down to active companion members in this group
         companion_mentions = [
@@ -359,10 +493,17 @@ class GroupChatEngine:
         group_id: str,
         companion_id: str,
         trigger_reason: str = "mention",
+        natural: bool = False,
+        commit: bool = True,
     ) -> Dict[str, Any]:
         """
         Generate a conversational turn for a specific companion in the group chat.
         Injects group context, fellow members, scratchpad ledger, and recent messages.
+
+        natural=True writes like a real group chat: short messages, and the companion may
+        stay silent ("pass") or only react with an emoji. commit=False returns the message
+        without saving it, so the caller can post it after a typing delay.
+        The result carries "action": "message" | "pass" | "react".
         """
         meta = _load_meta(group_id)
         if not meta:
@@ -385,14 +526,10 @@ class GroupChatEngine:
 
         # 2. Format recent group messages (up to 16 recent messages)
         recent_msgs = hist[-16:]
-        conv_lines = []
-        for m in recent_msgs:
-            if m.get("author_role") == "system":
-                conv_lines.append(f"[System] {m['content']}")
-            else:
-                author_tag = f"{m.get('author_name', m.get('author_id'))}"
-                conv_lines.append(f"{author_tag}: {m.get('content', '')}")
-        conv_transcript = "\n".join(conv_lines)
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        conv_transcript = format_transcript(recent_msgs, now=now_utc if natural else None)
+        last_other = next((m for m in reversed(hist)
+                           if m.get("author_id") != companion_id and m.get("author_role") != "system"), None)
 
         # 3. Format group scratchpad context
         scratchpad_context = ""
@@ -430,10 +567,13 @@ class GroupChatEngine:
             f"- **ACT WITH TOOLS IMMEDIATELY (CRITICAL - DO NOT JUST PROMISE)**: When someone asks for or suggests YouTube videos, songs, web searches, or PC information, DO NOT just say 'I am searching for it' or 'Let me find some'. YOU MUST CALL THE TOOL IN THIS VERY MESSAGE! For example, emit: [tool:bridge module=\"youtube_link\" cmd=\"search_videos\" query=\"...\"] or [tool:bridge module=\"spotify\" cmd=\"play\" target=\"...\"] or [tool:bridge module=\"web_search\" cmd=\"search\" query=\"...\"]. The system will run the search and give you the real URLs and titles to share with everyone.\n"
             f"- **INCLUDE FULL MEDIA URLS**: When recommending or sharing a YouTube video or Spotify track, always include the full watch URL (https://www.youtube.com/watch?v=...) or track URL so the interactive, playable player embeds directly in the group chat.\n"
             f"- **Collaborative Scratchpad**: To record an idea, task, or note onto our shared group scratchpad, use [tool:companion_scratchpad cmd=\"append\" text=\"...\"] (or [tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]) — it will be recorded into the shared group canvas with your author attribution.\n"
-            f"- **Keep it conversational**: Deliver your thought in 1 to 2 engaging, natural paragraphs.\n\n"
+            + (_NATURAL_STYLE_RULES if natural else
+               "- **Keep it conversational**: Deliver your thought in 1 to 2 engaging, natural paragraphs.\n\n")
             + (f"{bridges_block}\n\n" if bridges_block else "")
             + f"Recent Group Conversation:\n{conv_transcript}\n\n"
-            f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant. If requested or searching for media, emit the tool tag now."
+            + (f"Current local time: {datetime.datetime.now().strftime('%A %H:%M')}\n"
+               f"{_natural_task(cfg.name, trigger_reason)}" if natural else
+               f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant. If requested or searching for media, emit the tool tag now.")
         )
 
         pm = get_provider_manager()
@@ -453,6 +593,25 @@ class GroupChatEngine:
             raise RuntimeError(response.error or "Model failed to generate group response")
 
         content = response.content.strip()
+
+        if natural:
+            react_m = re.search(r"\[react:\s*([^\]\s]{1,8})\s*\]", content)
+            remainder = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", content, flags=re.IGNORECASE).strip()
+            remainder = re.sub(r"<(?:expression|mood)[^>]*>.*?</(?:expression|mood)>", "", remainder,
+                               flags=re.DOTALL | re.IGNORECASE).strip()
+            passed = bool(re.search(r"\[pass\]", content, re.IGNORECASE))
+            if (react_m or passed) and len(remainder) < 3:
+                if react_m and last_other:
+                    emoji = react_m.group(1)
+                    if commit:
+                        add_reaction(group_id, last_other["id"], emoji, cfg.id, cfg.name)
+                    return {"action": "react", "group_id": group_id, "message": None,
+                            "reaction": {"message_id": last_other["id"], "emoji": emoji,
+                                         "by": cfg.id, "by_name": cfg.name},
+                            "next_pinged_companions": []}
+                return {"action": "pass", "group_id": group_id, "message": None,
+                        "next_pinged_companions": []}
+            content = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", content, flags=re.IGNORECASE).strip()
 
         # Handle tools if emitted
         attachments: list[dict] = []
@@ -506,13 +665,20 @@ class GroupChatEngine:
         if mood_m:
             mood = mood_m.group(1).strip().lower()
 
-        cleaned_text = re.sub(
-            r"<(?:expression|mood|break)[^>]*>.*?</(?:expression|mood|break)>|<break\s*/?>",
-            " ", content, flags=re.DOTALL | re.IGNORECASE
-        ).strip()
+        parts_src = re.sub(r"<(?:expression|mood)[^>]*>.*?</(?:expression|mood)>", " ", content,
+                           flags=re.DOTALL | re.IGNORECASE)
+        parts_src = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", parts_src, flags=re.IGNORECASE)
+        bubbles = [b.strip() for b in re.split(r"<break\s*/?>|</break>", parts_src, flags=re.IGNORECASE) if b.strip()]
+        if not natural or len(bubbles) <= 1:
+            bubbles = [" ".join(bubbles)] if bubbles else []
+        elif len(bubbles) > 3:
+            bubbles = bubbles[:2] + [" ".join(bubbles[2:])]
+        cleaned_text = bubbles[0] if bubbles else ""
+        if natural and not cleaned_text:
+            return {"action": "pass", "group_id": group_id, "message": None, "next_pinged_companions": []}
 
         # Extract mentions in companion's response
-        companion_mentions = extract_mentions(cleaned_text, members)
+        companion_mentions = extract_mentions(" ".join(bubbles) or cleaned_text, members)
         # Avoid self-mention
         next_pinged = [cid for cid in companion_mentions if cid != companion_id and cid != "marcel"]
 
@@ -531,12 +697,19 @@ class GroupChatEngine:
             "attachments": attachments,
         }
 
-        hist = _load_history(group_id)
-        hist.append(msg_item)
-        _save_history(group_id, hist)
+        messages_out = [msg_item]
+        for extra in bubbles[1:]:
+            messages_out.append({**msg_item, "id": f"msg_{uuid.uuid4().hex[:6]}", "content": extra,
+                                 "attachments": [], "mentions": extract_mentions(extra, members)})
+        if commit:
+            for m in messages_out:
+                m["timestamp"] = utcnow_iso()
+                append_history_message(group_id, m)
 
         return {
+            "action": "message",
             "message": msg_item,
+            "messages": messages_out,
             "next_pinged_companions": next_pinged,
             "group_id": group_id,
         }

@@ -8,10 +8,14 @@ chat speed / pacing control, and multi-agent group scratchpad collaboration.
 from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException
+import json
+
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.companions.group_chat_engine import GroupChatEngine, _group_dir
+from core.companions.group_conductor import get_conductor
 from core.companions.engine.scratchpad import CompanionScratchpad
 from core.utils import get_logger
 
@@ -29,12 +33,24 @@ class CreateGroupRequest(BaseModel):
     avatar_symbol: Optional[str] = "🚀"
     accent_color: Optional[str] = "#8b5cf6"
     chat_speed_seconds: Optional[float] = 3.0
+    pace: Optional[str] = "natural"
 
 
 class GroupSettingsRequest(BaseModel):
     chat_speed_seconds: Optional[float] = None
     auto_reply_enabled: Optional[bool] = None
     max_turns_per_batch: Optional[int] = None
+    pace: Optional[str] = None                  # natural | lively | quiet | manual
+    paused: Optional[bool] = None
+    ambient_enabled: Optional[bool] = None      # companions may start conversations after a silence
+    active_hours_start: Optional[int] = None
+    active_hours_end: Optional[int] = None
+    max_ambient_per_day: Optional[int] = None
+    max_messages_per_hour: Optional[int] = None
+
+
+class NudgeRequest(BaseModel):
+    companion_id: Optional[str] = None
 
 
 class MemberActionRequest(BaseModel):
@@ -63,6 +79,7 @@ class ScratchpadAppendRequest(BaseModel):
 @router.get("")
 async def list_groups():
     """List all companion group chats."""
+    get_conductor().ensure_started()
     groups = await asyncio.to_thread(GroupChatEngine.list_groups)
     return {"groups": groups}
 
@@ -77,7 +94,8 @@ async def create_group(req: CreateGroupRequest):
         companion_ids=req.companion_ids or ["misakacipher"],
         avatar_symbol=req.avatar_symbol or "🚀",
         accent_color=req.accent_color or "#8b5cf6",
-        chat_speed_seconds=req.chat_speed_seconds or 3.0,
+        chat_speed_seconds=req.chat_speed_seconds if req.chat_speed_seconds is not None else 3.0,
+        pace=req.pace or "natural",
     )
     return {"success": True, "group": group}
 
@@ -107,6 +125,8 @@ async def update_settings(group_id: str, req: GroupSettingsRequest):
     meta = await asyncio.to_thread(GroupChatEngine.update_settings, group_id, settings)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
+    if settings.get("paused") or settings.get("pace") == "manual":
+        get_conductor().cancel_pending(group_id)
     return {"success": True, "group": meta}
 
 
@@ -138,10 +158,14 @@ async def post_user_message(group_id: str, req: GroupMessageRequest):
             content=req.content,
             attachments=req.attachments,
         )
+        conductor = get_conductor()
+        conductor.ensure_started()
+        responders = conductor.on_message(group_id, msg)
         return {
             "success": True,
             "message": msg,
             "mentioned_companions": mentioned,
+            "responders": [r["id"] for r in responders],
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -156,12 +180,58 @@ async def companion_turn(group_id: str, req: CompanionTurnRequest):
             companion_id=req.companion_id,
             trigger_reason=req.reason or "manual",
         )
+        if result.get("message"):
+            get_conductor().on_message(group_id, result["message"])
         return {"success": True, **result}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Group turn error ({group_id}/{req.companion_id}): {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{group_id}/nudge")
+async def nudge_group(group_id: str, req: NudgeRequest):
+    """Ask one companion (chosen automatically unless given) to say something now."""
+    if not _group_dir(group_id).exists():
+        raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
+    cid = get_conductor().nudge(group_id, req.companion_id)
+    return {"success": bool(cid), "companion_id": cid}
+
+
+@router.get("/{group_id}/status")
+async def group_status(group_id: str):
+    """Live pacing state: who is typing, room energy, message counts."""
+    if not _group_dir(group_id).exists():
+        raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
+    return {"status": get_conductor().status(group_id)}
+
+
+@router.get("/{group_id}/events")
+async def group_events(group_id: str, request: Request):
+    """Server-sent events for one group: message, typing, reaction, notice."""
+    if not _group_dir(group_id).exists():
+        raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
+    conductor = get_conductor()
+    conductor.ensure_started()
+    queue = conductor.subscribe(group_id)
+
+    async def stream():
+        try:
+            yield "retry: 3000\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=20)
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+        finally:
+            conductor.unsubscribe(group_id, queue)
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # Group Scratchpad Routes

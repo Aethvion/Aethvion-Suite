@@ -21,6 +21,9 @@ const CompanionCreator = (() => {
     let _groupPacingPaused = false;
     let _groupTurnInProgress = false;
     let _groupScratchpadOpen = true;
+    let _groupEventSource = null;        // live event stream of the open group
+    let _groupSeenIds = new Set();       // message ids already on screen
+    let _groupTypers = new Map();        // companion id -> name, currently typing
 
     // Shell
 
@@ -5163,10 +5166,10 @@ const CompanionCreator = (() => {
                             <div>
                                 <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.35rem;">Chat Pacing / Speed</label>
                                 <select id="gc-create-speed" class="control-select" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:#fff; border-radius:6px; padding:0.45rem;">
-                                    <option value="1.5">⚡ Fast (1.5s delay)</option>
-                                    <option value="3.0" selected>⏱️ Normal (3.0s delay)</option>
-                                    <option value="6.0">☕ Relaxed (6.0s delay)</option>
-                                    <option value="0">✋ Step-by-Step (Manual)</option>
+                                    <option value="natural" selected>💬 Natural</option>
+                                    <option value="lively">⚡ Lively</option>
+                                    <option value="quiet">☕ Quiet</option>
+                                    <option value="manual">✋ Manual (step-by-step)</option>
                                 </select>
                             </div>
                             <div>
@@ -5215,7 +5218,8 @@ const CompanionCreator = (() => {
             }
             const desc = (document.getElementById('gc-create-desc').value || '').trim();
             const icon = (document.getElementById('gc-create-icon').value || '🚀').trim();
-            const speed = parseFloat(document.getElementById('gc-create-speed').value) || 3.0;
+            const pace = document.getElementById('gc-create-speed').value || 'natural';
+            const speed = pace === 'manual' ? 0 : 3.0;
             const checkedBoxes = membersListEl.querySelectorAll('input[type="checkbox"]:checked');
             const compIds = Array.from(checkedBoxes).map(cb => cb.value);
 
@@ -5228,7 +5232,8 @@ const CompanionCreator = (() => {
                         description: desc,
                         companion_ids: compIds,
                         avatar_symbol: icon,
-                        chat_speed_seconds: speed
+                        chat_speed_seconds: speed,
+                        pace: pace
                     })
                 });
                 if (!res.ok) throw new Error('Server returned ' + res.status);
@@ -5270,10 +5275,133 @@ const CompanionCreator = (() => {
             if (!res.ok) throw new Error('Failed to load group ' + res.status);
             const d = await res.json();
             _activeGroupData = d.group;
+            _groupPacingPaused = !!d.group.settings?.paused;
             _renderGroupChat(_activeGroupData);
+            _connectGroupEvents(groupId);
         } catch (err) {
             groupPane.innerHTML = `<div style="padding:2rem; color:#ef4444;">Error: ${err.message}</div>`;
         }
+    }
+
+    // ── Live group events (messages, typing, reactions) ──────────────────────
+    // The server decides who answers and when; this tab only displays what happens.
+
+    function _groupPace(group) {
+        const s = (group || _activeGroupData)?.settings || {};
+        if (['natural', 'lively', 'quiet', 'manual'].includes(s.pace)) return s.pace;
+        return parseFloat(s.chat_speed_seconds ?? 3.0) === 0 ? 'manual' : 'natural';
+    }
+
+    function _disconnectGroupEvents() {
+        if (_groupEventSource) { try { _groupEventSource.close(); } catch {} }
+        _groupEventSource = null;
+        _groupTypers = new Map();
+    }
+
+    function _connectGroupEvents(groupId) {
+        _disconnectGroupEvents();
+        if (typeof EventSource === 'undefined') return;
+        const es = new EventSource(`${GROUPS_API}/${groupId}/events`);
+        _groupEventSource = es;
+        es.onmessage = (e) => {
+            if (_activeGroupId !== groupId) { es.close(); return; }
+            let ev;
+            try { ev = JSON.parse(e.data); } catch { return; }
+            if (ev.type === 'message' && ev.message) {
+                _appendGroupMessage(ev.message);
+                if (ev.message.author_role === 'companion') _refreshGroupScratchpad(groupId);
+            } else if (ev.type === 'typing') {
+                if (ev.active) _groupTypers.set(ev.companion_id, ev.name || ev.companion_id);
+                else _groupTypers.delete(ev.companion_id);
+                _renderGroupTyping();
+            } else if (ev.type === 'reaction') {
+                _applyGroupReaction(ev);
+            } else if (ev.type === 'notice' && typeof showToast === 'function') {
+                showToast(ev.text, 'info');
+            }
+        };
+    }
+
+    function _renderGroupTyping() {
+        const el = document.getElementById('gc-typing-indicator');
+        if (!el) return;
+        const names = Array.from(_groupTypers.values());
+        if (!names.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const who = names.length === 1 ? `${names[0]} is typing`
+            : names.length === 2 ? `${names[0]} and ${names[1]} are typing`
+            : `${names.length} people are typing`;
+        el.style.display = 'block';
+        el.innerHTML = `<span class="gc-typing-pill"><span class="gc-typing-dots"><i></i><i></i><i></i></span> ${_esc(who)}…</span>`;
+    }
+
+    function _groupReactionsHTML(reactions) {
+        if (!Array.isArray(reactions) || !reactions.length) return '';
+        const byEmoji = new Map();
+        reactions.forEach(r => {
+            if (!byEmoji.has(r.emoji)) byEmoji.set(r.emoji, []);
+            byEmoji.get(r.emoji).push(r.by_name || r.by);
+        });
+        return Array.from(byEmoji.entries()).map(([emoji, names]) =>
+            `<span class="gc-reaction-pill" title="${_esc(names.join(', '))}">${_esc(emoji)}${names.length > 1 ? ` <b>${names.length}</b>` : ''}</span>`
+        ).join('');
+    }
+
+    function _applyGroupReaction(ev) {
+        const card = document.querySelector(`.gc-msg-card[data-msg-id="${CSS.escape(ev.message_id)}"]`);
+        if (!card) return;
+        const list = JSON.parse(card.dataset.reactions || '[]');
+        if (list.some(r => r.by === ev.by && r.emoji === ev.emoji)) return;
+        list.push({ emoji: ev.emoji, by: ev.by, by_name: ev.by_name });
+        card.dataset.reactions = JSON.stringify(list);
+        let row = card.querySelector('.gc-reactions-row');
+        if (!row) {
+            row = document.createElement('div');
+            row.className = 'gc-reactions-row';
+            card.appendChild(row);
+        }
+        row.innerHTML = _groupReactionsHTML(list);
+    }
+
+    function _groupMsgCardHTML(m) {
+        if (m.author_role === 'system') {
+            return `<div class="gc-system-pill">${_esc(m.content)}</div>`;
+        }
+        const isUser = m.author_role === 'user' || m.author_id === 'marcel';
+        const color = m.accent_color || (isUser ? '#10b981' : '#6366f1');
+        const timeStr = m.timestamp ? (new Date(m.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const bubbleStyle = isUser
+            ? 'background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);'
+            : `background: ${color}14; border-color: ${color}38; box-shadow: 0 4px 14px ${color}10;`;
+        const reactions = Array.isArray(m.reactions) ? m.reactions : [];
+        return `
+            <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${bubbleStyle}" data-msg-id="${_esc(m.id || '')}" data-reactions="${_esc(JSON.stringify(reactions))}">
+                <div class="gc-msg-header">
+                    <span class="gc-msg-author" style="color:${color};">
+                        ${_renderGroupAvatar(m.author_id, m.author_name, isUser ? '👤' : m.avatar_symbol, color, 28)}
+                        <span>${_esc(m.author_name || m.author_id)}</span>
+                    </span>
+                    ${m.mood ? `<span class="gc-msg-badge">${_esc(m.mood)}</span>` : ''}
+                    <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
+                </div>
+                <div class="gc-msg-body">${_formatGroupMessageContent(m.content, m.attachments)}</div>
+                ${reactions.length ? `<div class="gc-reactions-row">${_groupReactionsHTML(reactions)}</div>` : ''}
+            </div>
+        `;
+    }
+
+    /** Add one message to the open chat, once. Returns false if it was already there. */
+    function _appendGroupMessage(m) {
+        if (!m || (m.id && _groupSeenIds.has(m.id))) return false;
+        if (m.id) _groupSeenIds.add(m.id);
+        const msgsScroll = document.getElementById('gc-msgs-scroll');
+        if (!msgsScroll) return false;
+        const nearBottom = msgsScroll.scrollHeight - msgsScroll.scrollTop - msgsScroll.clientHeight < 160;
+        msgsScroll.insertAdjacentHTML('beforeend', _groupMsgCardHTML(m));
+        if (typeof _applyHighlight === 'function') _applyHighlight(msgsScroll);
+        const isUser = m.author_role === 'user';
+        if (nearBottom || isUser) _scrollGroupChatToBottom();
+        if (_activeGroupData && Array.isArray(_activeGroupData.history)) _activeGroupData.history.push(m);
+        return true;
     }
 
     function _formatGroupMessageContent(raw, attachments = null) {
@@ -5297,7 +5425,8 @@ const CompanionCreator = (() => {
         if (!groupPane) return;
 
         const members = group.members || [];
-        const speedSec = group.settings?.chat_speed_seconds ?? 3.0;
+        const pace = _groupPace(group);
+        const ambientOn = group.settings?.ambient_enabled !== false;
         const entriesCount = group.scratchpad_summary?.entries_count || 0;
 
         groupPane.innerHTML = `
@@ -5333,13 +5462,17 @@ const CompanionCreator = (() => {
 
                     <!-- Pacing Controller -->
                     <div class="gc-speed-wrap">
-                        <span class="gc-speed-label"><i class="fas fa-gauge-high"></i> Speed:</span>
-                        <select id="gc-pacing-select" class="gc-speed-select">
-                            <option value="1.5" ${speedSec === 1.5 ? 'selected' : ''}>⚡ Fast (1.5s)</option>
-                            <option value="3.0" ${speedSec === 3.0 ? 'selected' : ''}>⏱️ Normal (3s)</option>
-                            <option value="6.0" ${speedSec === 6.0 ? 'selected' : ''}>☕ Relaxed (6s)</option>
-                            <option value="0" ${speedSec === 0 ? 'selected' : ''}>✋ Step-by-Step</option>
+                        <span class="gc-speed-label"><i class="fas fa-gauge-high"></i> Pace:</span>
+                        <select id="gc-pacing-select" class="gc-speed-select" title="Natural: companions answer when they have something to say, at human speed. Lively: more back-and-forth. Quiet: fewer, slower replies. Manual: nobody speaks unless you @mention them or press Converse.">
+                            <option value="natural" ${pace === 'natural' ? 'selected' : ''}>💬 Natural</option>
+                            <option value="lively" ${pace === 'lively' ? 'selected' : ''}>⚡ Lively</option>
+                            <option value="quiet" ${pace === 'quiet' ? 'selected' : ''}>☕ Quiet</option>
+                            <option value="manual" ${pace === 'manual' ? 'selected' : ''}>✋ Manual</option>
                         </select>
+                        <label class="gc-ambient-toggle" title="When the chat has been silent for a while, a companion may start a conversation on its own (daytime only, a few times a day).">
+                            <input type="checkbox" id="gc-ambient-toggle" ${ambientOn ? 'checked' : ''} />
+                            <span>Starts topics</span>
+                        </label>
                     </div>
 
                     <!-- Pause / Resume Toggle -->
@@ -5439,31 +5572,8 @@ const CompanionCreator = (() => {
         if (!history || !history.length) {
             return '<div style="text-align:center; padding:2rem; color:var(--text-secondary); font-size:0.85rem;">No messages yet. Send a message or use @Name to prompt companions!</div>';
         }
-        return history.map(m => {
-            if (m.author_role === 'system') {
-                return `<div class="gc-system-pill">${_esc(m.content)}</div>`;
-            }
-            const isUser = m.author_role === 'user' || m.author_id === 'marcel';
-            const color = m.accent_color || (isUser ? '#10b981' : '#6366f1');
-            const timeStr = m.timestamp ? (new Date(m.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            const bubbleStyle = isUser
-                ? 'background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);'
-                : `background: ${color}14; border-color: ${color}38; box-shadow: 0 4px 14px ${color}10;`;
-
-            return `
-                <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${bubbleStyle}">
-                    <div class="gc-msg-header">
-                        <span class="gc-msg-author" style="color:${color};">
-                            ${_renderGroupAvatar(m.author_id, m.author_name, m.avatar_symbol, color, 28)}
-                            <span>${_esc(m.author_name || m.author_id)}</span>
-                        </span>
-                        ${m.mood ? `<span class="gc-msg-badge">${_esc(m.mood)}</span>` : ''}
-                        <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
-                    </div>
-                    <div class="gc-msg-body">${_formatGroupMessageContent(m.content, m.attachments)}</div>
-                </div>
-            `;
-        }).join('');
+        _groupSeenIds = new Set(history.map(m => m.id).filter(Boolean));
+        return history.map(_groupMsgCardHTML).join('');
     }
 
     function _renderGroupScratchpadHTML(rawText) {
@@ -5496,22 +5606,47 @@ const CompanionCreator = (() => {
 
         // Pacing select change
         pacingSelect?.addEventListener('change', async () => {
-            const speed = parseFloat(pacingSelect.value) || 0;
-            if (_activeGroupData) _activeGroupData.settings.chat_speed_seconds = speed;
+            const pace = pacingSelect.value || 'natural';
+            const speed = pace === 'manual' ? 0 : 3.0;
+            if (_activeGroupData) {
+                _activeGroupData.settings.pace = pace;
+                _activeGroupData.settings.chat_speed_seconds = speed;
+            }
             try {
                 await fetch(`${GROUPS_API}/${group.id}/settings`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_speed_seconds: speed })
+                    body: JSON.stringify({ pace: pace, chat_speed_seconds: speed })
                 });
             } catch {}
         });
 
-        // Play/Pause button
-        playBtn?.addEventListener('click', () => {
+        // "Starts topics" toggle: companions may open a conversation after a long silence
+        document.getElementById('gc-ambient-toggle')?.addEventListener('change', async (e) => {
+            const on = !!e.target.checked;
+            if (_activeGroupData) _activeGroupData.settings.ambient_enabled = on;
+            try {
+                await fetch(`${GROUPS_API}/${group.id}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ambient_enabled: on })
+                });
+            } catch {}
+        });
+
+        // Play/Pause button: pausing is stored on the server so it also holds when this tab is closed
+        playBtn?.addEventListener('click', async () => {
             _groupPacingPaused = !_groupPacingPaused;
             playBtn.classList.toggle('paused', _groupPacingPaused);
             playBtn.innerHTML = `<i class="fas ${_groupPacingPaused ? 'fa-play' : 'fa-pause'}"></i> ${_groupPacingPaused ? 'Resume' : 'Pause'}`;
+            if (_activeGroupData) _activeGroupData.settings.paused = _groupPacingPaused;
+            try {
+                await fetch(`${GROUPS_API}/${group.id}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paused: _groupPacingPaused })
+                });
+            } catch {}
         });
 
         // Scratchpad toggle
@@ -5559,7 +5694,18 @@ const CompanionCreator = (() => {
         sendBtn?.addEventListener('click', _sendGroupUserMessage);
 
         // Converse button triggers next companion turn
-        converseBtn?.addEventListener('click', () => {
+        converseBtn?.addEventListener('click', async () => {
+            if (_groupPace() !== 'manual') {
+                // The server picks who speaks and paces it.
+                try {
+                    await fetch(`${GROUPS_API}/${group.id}/nudge`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    });
+                } catch {}
+                return;
+            }
             if (_groupTurnInProgress) return;
             const companions = (group.members || []).filter(m => !m.is_user && m.id !== 'marcel');
             if (!companions.length) return;
@@ -5619,28 +5765,14 @@ const CompanionCreator = (() => {
             const userMsg = data.message;
             const mentioned = data.mentioned_companions || [];
 
-            // Append message card
-            const timeStr = userMsg.timestamp ? (new Date(userMsg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            const msgHtml = `
-                <div class="gc-msg-card is-user" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);">
-                    <div class="gc-msg-header">
-                        <span class="gc-msg-author" style="color:#10b981;">
-                            ${_renderGroupAvatar('marcel', 'Marcel', '👤', '#10b981', 28)}
-                            <span>Marcel</span>
-                        </span>
-                        <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
-                    </div>
-                    <div class="gc-msg-body">${_formatGroupMessageContent(userMsg.content, userMsg.attachments)}</div>
-                </div>
-            `;
-            if (msgsScroll) {
-                msgsScroll.insertAdjacentHTML('beforeend', msgHtml);
-                if (typeof _applyHighlight === 'function') _applyHighlight(msgsScroll);
-                _scrollGroupChatToBottom();
-            }
+            // Show it now; the event stream may deliver the same message, which is then ignored.
+            _appendGroupMessage(userMsg);
 
-            // Start companion response orchestration
-            _orchestrateCompanionTurns(mentioned);
+            // Manual pace: this tab asks the mentioned companions to answer, one at a time.
+            // Every other pace: the server decides who answers and when.
+            if (_groupPace() === 'manual' && mentioned.length) {
+                _orchestrateCompanionTurns(mentioned);
+            }
 
         } catch (err) {
             if (typeof showToast === 'function') showToast(`Failed to send: ${err.message}`, 'error');
@@ -5689,29 +5821,7 @@ const CompanionCreator = (() => {
             const nextPinged = data.next_pinged_companions || [];
 
             if (typingEl) typingEl.style.display = 'none';
-
-            const msgsScroll = document.getElementById('gc-msgs-scroll');
-            if (msgsScroll && msg) {
-                const color = msg.accent_color || '#6366f1';
-                const timeStr = msg.timestamp ? (new Date(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-                const bubbleStyle = `background: ${color}14; border-color: ${color}38; box-shadow: 0 4px 14px ${color}10;`;
-                const msgHtml = `
-                    <div class="gc-msg-card is-companion" style="${bubbleStyle}">
-                        <div class="gc-msg-header">
-                            <span class="gc-msg-author" style="color:${color};">
-                                ${_renderGroupAvatar(msg.author_id, msg.author_name, msg.avatar_symbol, color, 28)}
-                                <span>${_esc(msg.author_name || msg.author_id)}</span>
-                            </span>
-                            ${msg.mood ? `<span class="gc-msg-badge">${_esc(msg.mood)}</span>` : ''}
-                            <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
-                        </div>
-                        <div class="gc-msg-body">${_formatGroupMessageContent(msg.content, msg.attachments)}</div>
-                    </div>
-                `;
-                msgsScroll.insertAdjacentHTML('beforeend', msgHtml);
-                if (typeof _applyHighlight === 'function') _applyHighlight(msgsScroll);
-                _scrollGroupChatToBottom();
-            }
+            if (msg) _appendGroupMessage(msg);
 
             // Also refresh group scratchpad in case the companion added a note
             await _refreshGroupScratchpad(_activeGroupId);
