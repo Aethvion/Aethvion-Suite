@@ -12,7 +12,10 @@ import shutil
 from pathlib import Path
 from core.utils.paths import COMPANIONS
 from core.utils import atomic_json_write
+from core.utils.logger import get_logger
 from pydantic import BaseModel
+
+logger = get_logger(__name__)
 
 from core.companions.registry import CompanionRegistry
 from core.companions.companion_engine import CompanionEngine
