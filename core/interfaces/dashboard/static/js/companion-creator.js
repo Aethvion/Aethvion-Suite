@@ -23,6 +23,7 @@ const CompanionCreator = (() => {
     let _groupScratchpadOpen = true;
     let _groupScratchpadTab = 'all';
     let _groupScratchpadData = null;
+    let _groupScratchpadCustomTabs = [];
     let _groupEventSource = null;        // live event stream of the open group
     let _groupSeenIds = new Set();       // message ids already on screen
     let _groupTypers = new Map();        // companion id -> name, currently typing
@@ -5652,19 +5653,23 @@ const CompanionCreator = (() => {
             }).join('');
         }
 
-        const sp = spInput || {};
+        const sp = (spInput && typeof spInput === 'object') ? spInput : { entries: [] };
         _groupScratchpadData = sp;
         const entries = Array.isArray(sp.entries) ? sp.entries : [];
-        if (!entries.length) {
-            return '<div class="gc-sp-empty">Group Scratchpad is empty.</div>';
-        }
 
-        const sections = [];
+        const defaultTopics = ['Ideas', 'Mechanics', 'Architecture', 'Notes'];
+        const sections = [...defaultTopics];
+        (Array.isArray(sp.sections) ? sp.sections : []).forEach(sec => {
+            if (sec && !sections.some(s => s.toLowerCase() === sec.toLowerCase())) sections.push(sec);
+        });
         entries.forEach(e => {
             const sec = e.section || 'Notes';
-            if (!sections.includes(sec)) sections.push(sec);
+            if (!sections.some(s => s.toLowerCase() === sec.toLowerCase())) sections.push(sec);
         });
-        if (_groupScratchpadTab !== 'all' && !sections.includes(_groupScratchpadTab)) {
+        _groupScratchpadCustomTabs.forEach(sec => {
+            if (sec && !sections.some(s => s.toLowerCase() === sec.toLowerCase())) sections.push(sec);
+        });
+        if (_groupScratchpadTab !== 'all' && !sections.some(s => s.toLowerCase() === _groupScratchpadTab.toLowerCase())) {
             _groupScratchpadTab = 'all';
         }
 
@@ -5674,49 +5679,73 @@ const CompanionCreator = (() => {
                     All <span class="gc-sp-tab-count">${entries.length}</span>
                 </button>
                 ${sections.map(sec => {
-                    const count = entries.filter(e => (e.section || 'Notes') === sec).length;
+                    const count = entries.filter(e => (e.section || 'Notes').toLowerCase() === sec.toLowerCase()).length;
                     const shortLabel = sec.replace(/^[^\w\s]+\s*/, '');
-                    return `<button type="button" class="gc-sp-tab ${_groupScratchpadTab === sec ? 'active' : ''}" data-sp-tab="${_esc(sec)}" title="${_esc(sec)}">
-                        ${_esc(shortLabel)} <span class="gc-sp-tab-count">${count}</span>
+                    const isActive = _groupScratchpadTab.toLowerCase() === sec.toLowerCase();
+                    return `<button type="button" class="gc-sp-tab ${isActive ? 'active' : ''}" data-sp-tab="${_esc(sec)}" title="${_esc(sec)}">
+                        ${_esc(shortLabel)}${count ? ` <span class="gc-sp-tab-count">${count}</span>` : ''}
                     </button>`;
                 }).join('')}
+                <button type="button" class="gc-sp-tab gc-sp-tab-add" id="gc-sp-add-topic-btn" title="Add topic tab">+</button>
             </div>
         `;
 
         const visible = _groupScratchpadTab === 'all'
             ? entries
-            : entries.filter(e => (e.section || 'Notes') === _groupScratchpadTab);
+            : entries.filter(e => (e.section || 'Notes').toLowerCase() === _groupScratchpadTab.toLowerCase());
 
-        const blocksHtml = visible.map(e => {
-            const author = e.author || {};
-            const authorName = typeof author === 'object' ? (author.name || author.id || 'Companion') : String(author || 'Companion');
-            const color = (typeof author === 'object' && author.color) ? author.color : '#8b5cf6';
-            const sec = (e.section || 'Notes').replace(/^[^\w\s]+\s*/, '');
-            const ts = e.timestamp ? new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            return `
-                <div class="gc-sp-block" style="--sp-accent:${_esc(color)};">
-                    <div class="gc-sp-block-meta">
-                        <span class="gc-sp-author-pill" style="background:${_esc(color)}22; color:${_esc(color)}; border-color:${_esc(color)}44;">
-                            ${_esc(authorName)}
-                        </span>
-                        <span class="gc-sp-sec-tag">${_esc(sec)}</span>
-                        ${ts ? `<span class="gc-sp-time">${ts}</span>` : ''}
+        const blocksHtml = visible.length
+            ? visible.map(e => {
+                const author = e.author || {};
+                const authorName = typeof author === 'object' ? (author.name || author.id || 'Companion') : String(author || 'Companion');
+                const color = (typeof author === 'object' && author.color) ? author.color : '#8b5cf6';
+                const sec = (e.section || 'Notes').replace(/^[^\w\s]+\s*/, '');
+                const ts = e.timestamp ? new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                return `
+                    <div class="gc-sp-block" style="--sp-accent:${_esc(color)};">
+                        <div class="gc-sp-block-meta">
+                            <span class="gc-sp-author-pill" style="background:${_esc(color)}22; color:${_esc(color)}; border-color:${_esc(color)}44;">
+                                ${_esc(authorName)}
+                            </span>
+                            <span class="gc-sp-sec-tag">${_esc(sec)}</span>
+                            ${ts ? `<span class="gc-sp-time">${ts}</span>` : ''}
+                        </div>
+                        <div class="gc-sp-block-text">${_esc(e.text || '')}</div>
                     </div>
-                    <div class="gc-sp-block-text">${_esc(e.text || '')}</div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('')
+            : `<div class="gc-sp-empty">${_groupScratchpadTab === 'all' ? 'Group Scratchpad is empty.' : `No notes in "${_esc(_groupScratchpadTab)}" yet.`}</div>`;
 
         return `${tabsHtml}<div class="gc-sp-blocks">${blocksHtml}</div>`;
     }
 
     document.addEventListener('click', (e) => {
+        const addTopicBtn = e.target.closest?.('#gc-sp-add-topic-btn');
+        if (addTopicBtn) {
+            const name = (prompt('New scratchpad topic tab name:') || '').trim();
+            if (!name) return;
+            if (!_groupScratchpadCustomTabs.some(t => t.toLowerCase() === name.toLowerCase())) {
+                _groupScratchpadCustomTabs.push(name);
+            }
+            _groupScratchpadTab = name;
+            const spBody = document.getElementById('gc-sp-body');
+            if (spBody) spBody.innerHTML = _renderGroupScratchpadHTML(_groupScratchpadData || { entries: [] });
+            const input = document.getElementById('gc-sp-note-input');
+            if (input) input.placeholder = `Add note to "${name}"…`;
+            return;
+        }
         const tabBtn = e.target.closest?.('.gc-sp-tab');
-        if (!tabBtn) return;
-        _groupScratchpadTab = tabBtn.dataset.spTab || 'all';
+        if (!tabBtn || !tabBtn.dataset.spTab) return;
+        _groupScratchpadTab = tabBtn.dataset.spTab;
         const spBody = document.getElementById('gc-sp-body');
-        if (spBody && _groupScratchpadData) {
-            spBody.innerHTML = _renderGroupScratchpadHTML(_groupScratchpadData);
+        if (spBody) {
+            spBody.innerHTML = _renderGroupScratchpadHTML(_groupScratchpadData || { entries: [] });
+        }
+        const input = document.getElementById('gc-sp-note-input');
+        if (input) {
+            input.placeholder = _groupScratchpadTab === 'all'
+                ? 'Add note to Group Scratchpad…'
+                : `Add note to "${_groupScratchpadTab}"…`;
         }
     });
 
@@ -5791,14 +5820,17 @@ const CompanionCreator = (() => {
             const text = (spNoteInput?.value || '').trim();
             if (!text) return;
             spNoteInput.value = '';
+            const targetSection = _groupScratchpadTab === 'all' ? 'Ideas' : _groupScratchpadTab;
             try {
                 const res = await fetch(`${GROUPS_API}/${group.id}/scratchpad/append`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text, author: 'Marcel', section: 'Ideas' })
+                    body: JSON.stringify({ text: text, author: 'Marcel', section: targetSection })
                 });
                 if (res.ok) {
                     await _refreshGroupScratchpad(group.id);
+                } else if (typeof showToast === 'function') {
+                    showToast('Failed to add scratchpad note', 'error');
                 }
             } catch {}
         };

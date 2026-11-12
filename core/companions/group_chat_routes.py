@@ -296,10 +296,10 @@ async def append_group_scratchpad(group_id: str, req: ScratchpadAppendRequest):
     g_dir = _group_dir(group_id)
     if not g_dir.exists():
         raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
-    sp = CompanionScratchpad(g_dir, req.author or "Marcel")
+    sp = CompanionScratchpad(g_dir, "Group")
     res = await asyncio.to_thread(
         sp.append_note,
-        note=req.text,
+        text=req.text,
         section=req.section or "Ideas",
         author=req.author or "Marcel",
     )
@@ -308,16 +308,10 @@ async def append_group_scratchpad(group_id: str, req: ScratchpadAppendRequest):
 
 @router.post("/{group_id}/scratchpad/clear")
 async def clear_group_scratchpad(group_id: str):
-    """Reset the group scratchpad to default template."""
+    """Clear the group scratchpad."""
     g_dir = _group_dir(group_id)
     if not g_dir.exists():
         raise HTTPException(status_code=404, detail=f"Group '{group_id}' not found")
     sp = CompanionScratchpad(g_dir, "Group")
-    meta = GroupChatEngine.get_group(group_id)
-    title = meta.get("title", "Group") if meta else "Group"
-    await asyncio.to_thread(
-        sp.initialize_template,
-        title=f"Shared Brainstorming Canvas — {title}",
-        subtitle="Collaborative scratchpad for group chat members.",
-    )
-    return {"success": True, "scratchpad": sp.load()}
+    await asyncio.to_thread(sp.clear)
+    return {"success": True, "scratchpad": await asyncio.to_thread(sp.load)}

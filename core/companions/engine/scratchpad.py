@@ -271,6 +271,9 @@ class CompanionScratchpad(CompanionComponent):
         """Render structured ledger entries into a clean markdown document with embedded author pills."""
         entries = ledger.get("entries") or []
         if self._name == "Group" and not entries:
+            temp_md = self._md_file.with_suffix(".tmp")
+            temp_md.write_text("", encoding="utf-8")
+            temp_md.replace(self._md_file)
             return ""
         title = ledger.get("title", "Group Scratchpad" if self._name == "Group" else "Shared Brainstorming Scratchpad")
         subtitle = ledger.get("subtitle", "" if self._name == "Group" else f"A live co-working canvas for Marcel and {self._name}.")
@@ -443,14 +446,18 @@ class CompanionScratchpad(CompanionComponent):
             ])
             entries = ledger.setdefault("entries", [])
 
-            # Match target section
+            # Match target section, or create a new topic section if explicitly given
             target_sec = None
             if section and section.strip():
-                sec_needle = section.strip().lower()
+                sec_clean = section.strip()
+                sec_needle = sec_clean.lower()
                 for s in sections:
-                    if sec_needle in s.lower():
+                    if sec_needle == s.lower() or sec_needle in s.lower():
                         target_sec = s
                         break
+                if not target_sec:
+                    target_sec = sec_clean
+                    sections.append(target_sec)
 
             if not target_sec:
                 # Default to Ideas or Quick Notes or first section
@@ -462,7 +469,9 @@ class CompanionScratchpad(CompanionComponent):
                     if target_sec:
                         break
             if not target_sec:
-                target_sec = sections[0] if sections else "💡 Ideas & Brainstorming"
+                target_sec = sections[0] if sections else "Ideas"
+                if target_sec not in sections:
+                    sections.append(target_sec)
 
             # Resolve author metadata
             author_meta = _resolve_author_info(author, default_id=self._dir.name, default_name=self._name)
@@ -502,13 +511,14 @@ class CompanionScratchpad(CompanionComponent):
             }
 
     def clear(self, reset_template: bool = True) -> Dict[str, Any]:
-        """Reset the scratchpad back to default template."""
+        """Reset the scratchpad back to empty (Group) or default template."""
         with self._lock:
+            is_group = self._name == "Group"
             init_ledger = {
                 "version": 2,
-                "title": "Shared Brainstorming Scratchpad",
-                "subtitle": f"A live co-working canvas for Marcel and {self._name}. Jot down ideas, mechanics, and plans here.",
-                "sections": [
+                "title": "Group Scratchpad" if is_group else "Shared Brainstorming Scratchpad",
+                "subtitle": "" if is_group else f"A live co-working canvas for Marcel and {self._name}. Jot down ideas, mechanics, and plans here.",
+                "sections": [] if is_group else [
                     "💡 Ideas & Brainstorming",
                     "🛠️ Game & Feature Mechanics",
                     "📌 Quick Notes & Next Steps"

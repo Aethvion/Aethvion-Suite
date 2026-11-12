@@ -133,7 +133,7 @@ def cmd_scratchpad(
 ) -> int:
     gid = _resolve_group_id(group)
     payload = {"text": text, "section": section, "author": author}
-    res = _http_json("POST", f"/api/companions/groups/{gid}/scratchpad", payload=payload, base_url=base_url)
+    res = _http_json("POST", f"/api/companions/groups/{gid}/scratchpad/append", payload=payload, base_url=base_url)
     if res and res.get("success"):
         print(f"Added to {gid} scratchpad [{section}] via server.")
         return 0
