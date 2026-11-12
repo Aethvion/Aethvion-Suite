@@ -2862,6 +2862,26 @@
     background: rgba(139, 92, 246, 0.15);
     border-color: rgba(139, 92, 246, 0.6);
 }
+.cc-group-card.has-unread {
+    border-color: rgba(167, 139, 250, 0.4);
+    background: rgba(139, 92, 246, 0.08);
+}
+.cc-group-unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #8b5cf6;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.65);
+}
 .cc-group-avatar {
     width: 32px;
     height: 32px;

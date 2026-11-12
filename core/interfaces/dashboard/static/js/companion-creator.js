@@ -5103,9 +5103,49 @@ const CompanionCreator = (() => {
         `;
     }
 
+    const _GC_READ_STORAGE_KEY = 'gc_read_counts_v1';
+    let _gcUnreadPollTimer = null;
+
+    function _getGroupReadCounts() {
+        try {
+            return JSON.parse(localStorage.getItem(_GC_READ_STORAGE_KEY) || '{}') || {};
+        } catch {
+            return {};
+        }
+    }
+
+    function _saveGroupReadCounts(map) {
+        try {
+            localStorage.setItem(_GC_READ_STORAGE_KEY, JSON.stringify(map));
+        } catch {}
+    }
+
+    function _markGroupRead(groupId, count) {
+        if (!groupId || typeof count !== 'number') return;
+        const map = _getGroupReadCounts();
+        map[groupId] = Math.max(0, count);
+        _saveGroupReadCounts(map);
+        const card = document.querySelector(`.cc-group-card[data-group-id="${CSS.escape(groupId)}"]`);
+        if (card) {
+            card.classList.remove('has-unread');
+            card.querySelector('.cc-group-unread-badge')?.remove();
+        }
+    }
+
+    function _ensureGroupListPolling() {
+        if (_gcUnreadPollTimer) return;
+        _gcUnreadPollTimer = setInterval(() => {
+            const groupEl = document.getElementById('cc-group-list');
+            if (groupEl && groupEl.offsetParent !== null) {
+                _loadGroupChats();
+            }
+        }, 10000);
+    }
+
     async function _loadGroupChats() {
         const groupEl = document.getElementById('cc-group-list');
         if (!groupEl) return;
+        _ensureGroupListPolling();
         try {
             const res = await fetch(GROUPS_API);
             if (!res.ok) return;
@@ -5115,8 +5155,18 @@ const CompanionCreator = (() => {
                 groupEl.innerHTML = '<div class="cc-card-empty" style="padding:0.4rem; font-size:0.75rem;">No group chats yet. Hit <strong>+</strong> to start one!</div>';
                 return;
             }
-            groupEl.innerHTML = groups.map(g => `
-                <div class="cc-group-card ${_activeGroupId === g.id ? 'active' : ''}" data-group-id="${_esc(g.id)}">
+            const readMap = _getGroupReadCounts();
+            let readMapDirty = false;
+            groupEl.innerHTML = groups.map(g => {
+                const total = g.message_count || 0;
+                const isActive = _activeGroupId === g.id;
+                if (isActive || readMap[g.id] === undefined) {
+                    readMap[g.id] = total;
+                    readMapDirty = true;
+                }
+                const unread = isActive ? 0 : Math.max(0, total - (readMap[g.id] || 0));
+                return `
+                <div class="cc-group-card ${isActive ? 'active' : ''} ${unread > 0 ? 'has-unread' : ''}" data-group-id="${_esc(g.id)}">
                     <div class="cc-group-avatar" style="background:${_esc(g.accent_color)}25; color:${_esc(g.accent_color)};">
                         ${_esc(g.avatar_symbol || '🚀')}
                     </div>
@@ -5124,11 +5174,14 @@ const CompanionCreator = (() => {
                         <div class="cc-group-title">${_esc(g.title)}</div>
                         <div class="cc-group-sub">
                             <span class="cc-group-members-badge"><i class="fas fa-users"></i> ${g.members ? g.members.length : 0}</span>
-                            <span>${g.message_count || 0} msgs</span>
+                            <span>${total} msgs</span>
                         </div>
                     </div>
+                    ${unread > 0 ? `<span class="cc-group-unread-badge" title="${unread} unread message${unread === 1 ? '' : 's'}">${unread > 99 ? '99+' : unread}</span>` : ''}
                 </div>
-            `).join('');
+            `;
+            }).join('');
+            if (readMapDirty) _saveGroupReadCounts(readMap);
 
             groupEl.querySelectorAll('.cc-group-card').forEach(card => {
                 card.addEventListener('click', () => _openGroupChat(card.dataset.groupId));
@@ -5276,6 +5329,7 @@ const CompanionCreator = (() => {
             const d = await res.json();
             _activeGroupData = d.group;
             _groupPacingPaused = !!d.group.settings?.paused;
+            _markGroupRead(groupId, (_activeGroupData.history || []).length);
             _renderGroupChat(_activeGroupData);
             _connectGroupEvents(groupId);
         } catch (err) {
@@ -5309,6 +5363,9 @@ const CompanionCreator = (() => {
             try { ev = JSON.parse(e.data); } catch { return; }
             if (ev.type === 'message' && ev.message) {
                 _appendGroupMessage(ev.message);
+                if (_activeGroupData && Array.isArray(_activeGroupData.history)) {
+                    _markGroupRead(groupId, _activeGroupData.history.length);
+                }
                 if (ev.message.author_role === 'companion') _refreshGroupScratchpad(groupId);
             } else if (ev.type === 'typing') {
                 if (ev.active) _groupTypers.set(ev.companion_id, ev.name || ev.companion_id);
