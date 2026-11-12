@@ -260,3 +260,48 @@ def test_group_chat_agent_message_and_cli(tmp_path, monkeypatch, capsys):
     assert last_msg["author_id"] == "antigravity"
     assert last_msg["author_role"] == "agent"
     assert "misakacipher" in last_msg["mentions"]
+
+
+@pytest.mark.asyncio
+async def test_group_chat_multi_round_tool_loop(tmp_path, monkeypatch):
+    test_groups_dir = tmp_path / "groups"
+    monkeypatch.setattr("core.companions.group_chat_engine.GROUPS_DIR", test_groups_dir)
+    monkeypatch.setattr("core.utils.paths.COMPANION_GROUPS", test_groups_dir)
+
+    group = GroupChatEngine.create_group(
+        title="Multi Tool Loop",
+        companion_ids=["misakacipher"],
+    )
+    gid = group["id"]
+
+    from core.bridges import bridge_manager
+    monkeypatch.setattr(
+        bridge_manager,
+        "call_module",
+        lambda module_id, command, args, profile_id=None: f"[{module_id}:{command}] result ok"
+    )
+
+    calls = 0
+
+    class MockResp:
+        def __init__(self, content):
+            self.success = True
+            self.content = content
+            self.error = None
+
+    class MockPM:
+        def call_with_failover(self, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return MockResp('[tool:bridge module="web_search" cmd="search" query="aethvion"]')
+            if calls == 2:
+                return MockResp('[tool:bridge module="git_link" cmd="status"]')
+            return MockResp("Checked both web search and git status silently before replying!")
+
+    monkeypatch.setattr("core.companions.group_chat_engine.get_provider_manager", lambda: MockPM())
+
+    res = await GroupChatEngine.generate_companion_turn(gid, "misakacipher")
+    assert calls == 3
+    assert res["message"]["content"] == "Checked both web search and git status silently before replying!"
+    assert "[tool:" not in res["message"]["content"]

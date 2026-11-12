@@ -639,7 +639,7 @@ class GroupChatEngine:
             f"- **Respond to your mentions**: If you were asked or mentioned in the recent dialogue, answer directly from your unique perspective and expertise.\n"
             f"- **Add your unique angle**: Don't just repeat what others said. Bring your own distinct background, ideas, and personality into the room.\n"
             f"- **Tool Restraint (CRITICAL)**: ONLY call external tools (`youtube_link`, `spotify`, `web_search`, etc.) when Marcel or another member EXPLICITLY asks for a video, song, or web search, or when you genuinely need live PC/web data to answer. NEVER attach unsolicited YouTube searches or tool calls to normal brainstorming or casual conversation.\n"
-            f"- **When a tool IS explicitly needed, call it directly**: Do not say 'I am searching for it' without emitting the tag — emit `[tool:bridge module=\"...\" cmd=\"...\" ...]` in that turn. Always use `[tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]` (never `[tool:companion_scratchpad ...]`) to add notes to the Group Scratchpad.\n"
+            f"- **Silent Multi-Step Tool Loop**: If you need to look something up or run multiple tools before answering, emit `[tool:bridge module=\"...\" cmd=\"...\" ...]` — the backend runs your tools silently and feeds the results back to you so you can chain more tools or write your final reply. Use `[tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]` for Group Scratchpad notes.\n"
             f"- **INCLUDE FULL MEDIA URLS**: Only when sharing a requested YouTube video or Spotify track, include the full watch URL (https://www.youtube.com/watch?v=...) or track URL so the playable player embeds in chat.\n"
             + (_NATURAL_STYLE_RULES if natural else
                "- **Keep it conversational**: Deliver your thought in 1 to 2 engaging, natural paragraphs.\n\n")
@@ -654,80 +654,88 @@ class GroupChatEngine:
         model = cfg.default_model or get_preferences_manager().get(cfg.id, {}).get("model") or "auto"
         behavior = raw_cfg.get("behavior", {})
 
-        response = await asyncio.to_thread(
-            pm.call_with_failover,
-            prompt=prompt,
-            trace_id=f"group-{group_id}-{cfg.id}-{uuid.uuid4().hex[:4]}",
-            temperature=behavior.get("temperature", 0.85),
-            model=model,
-            source=f"groupchat-{cfg.id}",
-        )
-
-        if not response.success or not response.content:
-            raise RuntimeError(response.error or "Model failed to generate group response")
-
-        content = response.content.strip()
-
-        if natural:
-            react_m = re.search(r"\[react:\s*([^\]\s]{1,8})\s*\]", content)
-            remainder = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", content, flags=re.IGNORECASE).strip()
-            remainder = re.sub(r"<(?:expression|mood)[^>]*>.*?</(?:expression|mood)>", "", remainder,
-                               flags=re.DOTALL | re.IGNORECASE).strip()
-            passed = bool(re.search(r"\[pass\]", content, re.IGNORECASE))
-            if (react_m or passed) and len(remainder) < 3:
-                if react_m and last_other:
-                    emoji = react_m.group(1)
-                    if commit:
-                        add_reaction(group_id, last_other["id"], emoji, cfg.id, cfg.name)
-                    return {"action": "react", "group_id": group_id, "message": None,
-                            "reaction": {"message_id": last_other["id"], "emoji": emoji,
-                                         "by": cfg.id, "by_name": cfg.name},
-                            "next_pinged_companions": []}
-                return {"action": "pass", "group_id": group_id, "message": None,
-                        "next_pinged_companions": []}
-            content = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", content, flags=re.IGNORECASE).strip()
-
-        # Handle tools if emitted
+        MAX_TOOL_ROUNDS = 4
+        accumulated_tool_results: List[str] = []
         attachments: list[dict] = []
-        if "[tool:" in content and caps.get("tools_enabled", True):
+        content = ""
+
+        for round_idx in range(MAX_TOOL_ROUNDS):
+            if round_idx == 0:
+                turn_prompt = prompt
+            else:
+                is_last_round = round_idx == MAX_TOOL_ROUNDS - 1
+                tool_instruction = (
+                    "Do NOT emit any `[tool:...]` tags in this final reply."
+                    if is_last_round else
+                    "If you need another tool call before answering, emit `[tool:...]` (it will run silently without posting to the room). Otherwise, deliver your final reply directly without `[tool:...]` tags."
+                )
+                turn_prompt = (
+                    f"{prompt}\n\n"
+                    f"## Tool Execution Results (Round {round_idx}):\n"
+                    + "\n".join(accumulated_tool_results)
+                    + f"\n\nTask: Deliver your reply in character as {cfg.name} incorporating the findings, links, or media above. {tool_instruction} Include the full URL (e.g. YouTube watch link https://www.youtube.com/watch?v=... or Spotify track link) if media was requested so the interactive embed renders in the chat."
+                )
+
+            response = await asyncio.to_thread(
+                pm.call_with_failover,
+                prompt=turn_prompt,
+                trace_id=f"group-{group_id}-{cfg.id}-{uuid.uuid4().hex[:4]}" + (f"-r{round_idx + 1}" if round_idx > 0 else ""),
+                temperature=behavior.get("temperature", 0.85),
+                model=model,
+                source=f"groupchat-{cfg.id}" + ("-tool-followup" if round_idx > 0 else ""),
+            )
+
+            if not response.success or not response.content:
+                if round_idx == 0:
+                    raise RuntimeError(response.error or "Model failed to generate group response")
+                break
+
+            content = response.content.strip()
+
+            if round_idx == 0 and natural and "[tool:" not in content:
+                react_m = re.search(r"\[react:\s*([^\]\s]{1,8})\s*\]", content)
+                remainder = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", content, flags=re.IGNORECASE).strip()
+                remainder = re.sub(r"<(?:expression|mood)[^>]*>.*?</(?:expression|mood)>", "", remainder,
+                                   flags=re.DOTALL | re.IGNORECASE).strip()
+                passed = bool(re.search(r"\[pass\]", content, re.IGNORECASE))
+                if (react_m or passed) and len(remainder) < 3:
+                    if react_m and last_other:
+                        emoji = react_m.group(1)
+                        if commit:
+                            add_reaction(group_id, last_other["id"], emoji, cfg.id, cfg.name)
+                        return {"action": "react", "group_id": group_id, "message": None,
+                                "reaction": {"message_id": last_other["id"], "emoji": emoji,
+                                             "by": cfg.id, "by_name": cfg.name},
+                                "next_pinged_companions": []}
+                    return {"action": "pass", "group_id": group_id, "message": None,
+                            "next_pinged_companions": []}
+                content = re.sub(r"\[react:[^\]]*\]|\[pass\]", "", content, flags=re.IGNORECASE).strip()
+
+            if "[tool:" not in content or not caps.get("tools_enabled", True):
+                break
+
             round_results = []
             cleaned = content
-            # Ensure group_id is passed so scratchpad tool operates on this group's scratchpad
             async for tool_event in execute_tools_stream(content, [], profile_id=connector_profile, companion_id=cfg.id, group_id=group_id):
                 if tool_event["type"] == "final_cleaned":
                     cleaned = tool_event["content"]
                     round_results = tool_event["results"]
-            if cleaned:
-                content = cleaned
 
-            # Extract any media captures or URLs
-            from core.companions.engine.tools import extract_peripheral_captures
-            _, tool_att_meta = extract_peripheral_captures(round_results, [])
-            if tool_att_meta:
-                attachments.extend(tool_att_meta)
+            if round_results:
+                accumulated_tool_results.extend(round_results)
+                from core.companions.engine.tools import extract_peripheral_captures
+                _, tool_att_meta = extract_peripheral_captures(round_results, [])
+                if tool_att_meta:
+                    attachments.extend(tool_att_meta)
 
-            # If tool returned informative data (YouTube links, web results, PC info), run follow-up completion!
             has_informative_result = any(
                 not r.startswith("[scratchpad") and not r.startswith("[companion_scratchpad")
                 for r in round_results
             )
-            if round_results and has_informative_result:
-                followup_prompt = (
-                    f"{prompt}\n\n"
-                    f"## Tool Execution Results:\n"
-                    + "\n".join(round_results)
-                    + f"\n\nTask: Deliver your reply in character as {cfg.name} incorporating the findings, links, or media above directly into your response. Do NOT emit any `[tool:...]` tags in this follow-up reply. Include the full URL (e.g. YouTube watch link https://www.youtube.com/watch?v=... or Spotify track link) if media was requested so the interactive embed renders in the chat."
-                )
-                r2 = await asyncio.to_thread(
-                    pm.call_with_failover,
-                    prompt=followup_prompt,
-                    trace_id=f"group-{group_id}-{cfg.id}-{uuid.uuid4().hex[:4]}-r2",
-                    temperature=behavior.get("temperature", 0.85),
-                    model=model,
-                    source=f"groupchat-{cfg.id}-tool-followup",
-                )
-                if r2.success and r2.content.strip():
-                    content = r2.content.strip()
+            if cleaned.strip() and not has_informative_result:
+                content = cleaned.strip()
+                break
+            content = cleaned.strip()
 
         # Parse mood / expression
         mood = behavior.get("default_mood", "calm")
