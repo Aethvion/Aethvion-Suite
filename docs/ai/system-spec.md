@@ -53,7 +53,7 @@ Realtime Incubator:
 
 DASHBOARD TAB SYSTEM
 Registry: core/interfaces/dashboard/static/js/sidebar-manager.js
-8 Categories:
+7 Categories:
 - workspace: agent-corp, schedule, asset-library, photo, audio, 3d-gen
 - research: advaiconv, researchboard, arena, aiconv, explained
 - memory: memory, persistent-memory, sched-overview
@@ -61,8 +61,7 @@ Registry: core/interfaces/dashboard/static/js/sidebar-manager.js
 - model-hub: local-models, image-models, audio-models, api-providers, 3d-models
 - library: voice-library, connectors
 - system: logs, documentation, usage, status, ports
-- experimental: physics-lab, stats-lab, chembio-lab, worldsim, project-mapper, decision-trace, lexmap, supplymind, clinicaltrace
-Core / Pinned: suite-home, chat, code, automate, aethviondb, companions (e.g. misaka-cipher), companion-creator, companion-memory, settings
+Core / Pinned: suite-home, chat, code, automate, aethviondb, companions, companion-creator, companion-memory, settings
 
 TRACE & SECURITY
 Trace ID Format: MCTR-YYYYMMDDHHMMSS-UUID

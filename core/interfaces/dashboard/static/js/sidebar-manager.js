@@ -45,15 +45,6 @@
         'usage':             { label: 'Usage',          icon: 'fas fa-chart-bar' },
         'status':            { label: 'Status',         icon: 'fas fa-traffic-light' },
         'ports':             { label: 'Ports',          icon: 'fas fa-ethernet' },
-        'worldsim':          { label: 'WorldSim',       icon: 'fas fa-globe' },
-        'project-mapper':    { label: 'Project Mapper', icon: 'fas fa-diagram-project' },
-        'decision-trace':    { label: 'DecisionTrace',  icon: 'fas fa-timeline' },
-        'lexmap':            { label: 'LexMap',         icon: 'fas fa-scale-balanced' },
-        'supplymind':        { label: 'SupplyMind',     icon: 'fas fa-network-wired' },
-        'clinicaltrace':     { label: 'ClinicalTrace',  icon: 'fas fa-stethoscope' },
-        'physics-lab':       { label: 'Physics & Math', icon: 'fas fa-atom' },
-        'stats-lab':         { label: 'Data & Stats',   icon: 'fas fa-chart-simple' },
-        'chembio-lab':       { label: 'Chem & Bio',     icon: 'fas fa-flask' },
         'misaka-cipher':     { label: 'MisakaCipher',   icon: 'fas fa-shield-cat' },
     };
 
@@ -100,12 +91,6 @@
             label: 'System',
             icon: 'fas fa-server',
             tabs: ['logs', 'documentation', 'usage', 'status', 'ports'],
-        },
-        {
-            id: 'experimental',
-            label: 'Experimental',
-            icon: 'fas fa-flask-vial',
-            tabs: ['physics-lab', 'stats-lab', 'chembio-lab', 'worldsim', 'project-mapper', 'decision-trace', 'lexmap', 'supplymind', 'clinicaltrace'],
         },
     ];
 

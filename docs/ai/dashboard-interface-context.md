@@ -15,10 +15,10 @@ Tab switching is handled by `switchDashboardTab(tabId)` or `[SwitchTab: tab_id]`
 - `code` — Code IDE & agentic coding workspace
 - `automate` — Visual node workflow builder
 - `aethviondb` — Structured knowledge & graph workspace
-- Companions — Dynamic companion tabs (e.g. `misaka-cipher`), plus `companion-creator` and `companion-memory` (Companions view also hosts 1-on-1 chat and **Group Chats**)
+- Companions — Dynamic companion tabs, plus `companion-creator` and `companion-memory` (Companions view also hosts 1-on-1 chat and **Group Chats**)
 - `settings` — Global settings & sidebar profile customization
 
-### Sidebar Categories (8)
+### Sidebar Categories (7)
 1. **Workspace (`workspace`)**: `agent-corp`, `schedule`, `asset-library`, `photo`, `audio`, `3d-gen`
 2. **Research (`research`)**: `advaiconv`, `researchboard`, `arena`, `aiconv`, `explained`
 3. **Memory (`memory`)**: `memory`, `persistent-memory`, `sched-overview`
@@ -26,7 +26,6 @@ Tab switching is handled by `switchDashboardTab(tabId)` or `[SwitchTab: tab_id]`
 5. **Model Hub (`model-hub`)**: `local-models`, `image-models`, `audio-models`, `api-providers`, `3d-models`
 6. **Library (`library`)**: `voice-library`, `connectors` (Native Connectors, Realtime Incubator, Profiles)
 7. **System (`system`)**: `logs`, `documentation`, `usage`, `status`, `ports`
-8. **Experimental (`experimental`)**: `physics-lab`, `stats-lab`, `chembio-lab`, `worldsim`, `project-mapper`, `decision-trace`, `lexmap`, `supplymind`, `clinicaltrace`
 
 ---
 

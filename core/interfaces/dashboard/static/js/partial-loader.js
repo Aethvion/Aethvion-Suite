@@ -18,7 +18,6 @@
 
     const SCRIPT_MAP = {
         'chat':             ['/static/js/mode-chat.js'],
-        'agents':           ['/static/js/mode-agents.js'],
         'schedule':         ['/static/js/mode-schedule.js'],
         'agent-corp':       ['/static/js/mode-agentcorp.js'],
         'arena':            ['/static/js/mode-arena.js'],
@@ -40,8 +39,6 @@
         'supplymind':       ['/static/js/mode-supplymind.js'],
         'clinicaltrace':    ['/static/js/mode-clinicaltrace.js'],
         'misaka-cipher':    ['/static/js/mode-misakacipher.js'],
-        'axiom':            ['/static/js/mode-axiom.js'],
-        'lyra':             ['/static/js/mode-lyra.js'],
         'companion-creator':['/static/js/companion-creator.js'],
         'files':            ['/static/js/view-files.js'],
         'memory':           ['/static/js/view-memory.js'],
@@ -50,7 +47,6 @@
         'audio':            ['/static/js/mode-audio.js'],
         'usage':            ['/static/js/view-usage.js'],
         'settings':         ['/static/js/view-settings.js'],
-        'version':          ['/static/js/view-settings.js'],
         'ports':            ['/static/js/view-ports.js'],
         'documentation':    ['/static/js/view-documentation.js'],
         'status':           ['/static/js/view-status.js'],

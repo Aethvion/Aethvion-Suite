@@ -31,10 +31,7 @@ The single point of entry for AI routing, cost tracking, and privacy enforcement
 ---
 
 ### 2. **Companions & Group Chats** — Persistent AI Coworkers
-Companions are the primary human-facing layer (`core/companions/`). Each companion has a JSON personality config, evolving memory, visual expressions, and access to live tools.
-
-**Built-in Companions & Creator:**
-- **Misaka Cipher**, **Axiom**, **Lyra**, plus any custom companions built in **Companion Creator** (e.g., *Ruiko Saten*)
+The Companion system (`core/companions/`) exists to provide persistent, locally-owned AI collaborators rather than stateless one-off chat sessions. Each companion has a configurable personality, evolving memory, visual expressions, and access to live tools, and new companions can be built in **Companion Creator**.
 
 **Key Companion Capabilities:**
 - **1-on-1 & Group Chats:** Multi-companion rooms driven by a server-side conductor (`core/companions/group_conductor.py`) with natural human pacing, `@mentions`, `[pass]` silence, and emoji reactions (`[react:👍]`)
@@ -83,7 +80,7 @@ A multi-layered cognitive system ensuring context carries forward across session
 
 ## The Dashboard: Everything in One Place
 
-The web dashboard (`http://localhost:8080`) uses a drill-down sidebar organized into top-level modes (`Home`, `Chat`, `Code`, `Automate`, `AethvionDB`, Companions) and 8 collapsible categories:
+The web dashboard (`http://localhost:8080`) uses a drill-down sidebar organized into top-level modes (`Home`, `Chat`, `Code`, `Automate`, `AethvionDB`, Companions) and 7 collapsible categories:
 
 | Category | Tabs |
 |---|---|
@@ -94,4 +91,3 @@ The web dashboard (`http://localhost:8080`) uses a drill-down sidebar organized 
 | **Model Hub** | Text & Chat, Image Models, Audio & Speech, API Providers, 3D Models |
 | **Library** | Voice Library, Connectors (Native · Realtime Incubator · Profiles) |
 | **System** | Logs, Docs, Usage, Status, Ports |
-| **Experimental** | Physics & Math, Data & Stats, Chem & Bio, WorldSim, Project Mapper, DecisionTrace, LexMap, SupplyMind, ClinicalTrace |

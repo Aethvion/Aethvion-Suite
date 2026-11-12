@@ -34,7 +34,6 @@ Machine-readable specifications for AI agents and internal prompts operating wit
 ### ⚙️ Subsystem Guides
 - **[automate/overview.md](./automate/overview.md)** — Visual node-based workflow builder, engine v2 (branching, loops, retries, sub-workflows), Model Hub & Asset Library nodes, and standalone Python compiler
 - **[aethviondb/overview.md](./aethviondb/overview.md)** — Structured personal knowledge base, semantic vector search, relationship graph, and dataset baking
-- **[interactivedocs/index.html](./interactivedocs/index.html)** — Standalone interactive HTML reference
 
 ### 🗺️ Roadmaps (`docs/roadmap/`)
 Active engineering plans and live changelogs:

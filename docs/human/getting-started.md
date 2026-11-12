@@ -29,7 +29,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Open the web dashboard at `http://localhost:8000` (check **System -> Ports** if configured on another port).
+Open the web dashboard at `http://localhost:8080` (check **System -> Ports** if configured on another port).
 
 ---
 
@@ -37,10 +37,10 @@ Open the web dashboard at `http://localhost:8000` (check **System -> Ports** if 
 
 ### 1. Chat & Companions
 - **Direct Chat (`chat`)**: Multi-provider streaming conversations with model switching and attachments.
-- **Companions**: Persistent AI personas (e.g., `misaka-cipher` and custom personas created in **Companion Creator**) with their own memory, voice, avatar, and expression states.
+- **Companions**: The Companion system gives you persistent, locally-stored AI personas (managed and created in **Companion Creator**) instead of stateless chat windows. Each companion retains memory across sessions, maintains a scratchpad, supports voice/avatar and expression states, and can invoke Connectors to read live context or take actions.
   - Brain state is stored per companion under `data/companions/{companion_id}/`.
   - **Companion Memory (`companion-memory`)**: Inspect and manage companion memory and scratchpad entries.
-- **Group Chats**: Multi-companion rooms coordinated server-side by `core/companions/group_conductor.py` and `core/companions/group_chat_engine.py`, with shared scratchpads and tool/connector access stored under `data/companions/groups/{group_id}/`.
+- **Group Chats**: Multi-companion rooms coordinated server-side by `core/companions/group_conductor.py` and `core/companions/group_chat_engine.py`, allowing multiple companions to collaborate with shared scratchpads and tool/connector access stored under `data/companions/groups/{group_id}/`.
 
 ### 2. Connectors (`library -> connectors`)
 Aethvion Suite includes **23 native connector modules** registered in `core/bridges/registry.json` (covering screen capture, OCR, visual memory, window focus, clipboard, git, processes, media, system info, webcam, tasks, scratchpad, timers, flow state, web search, webpage reader, YouTube, Twitch, Reddit, weather, Spotify, group chat, and `dynamic_toolmaker`).
@@ -63,9 +63,9 @@ Structured graph and knowledge workspace (`data/aethviondb/<name>/`) with Explor
 
 ## Dashboard Navigation
 
-The sidebar organizes views into pinned core tools and 8 collapsible categories (`core/interfaces/dashboard/static/js/sidebar-manager.js`):
+The sidebar organizes views into pinned core tools and 7 collapsible categories (`core/interfaces/dashboard/static/js/sidebar-manager.js`):
 
-- **Pinned / Core**: `suite-home`, `chat`, `code`, `automate`, `aethviondb`, companions (e.g. `misaka-cipher`), `companion-creator`, `companion-memory`, `settings`
+- **Pinned / Core**: `suite-home`, `chat`, `code`, `automate`, `aethviondb`, registered companions, `companion-creator`, `companion-memory`, `settings`
 - **Workspace**: `agent-corp`, `schedule`, `asset-library`, `photo`, `audio`, `3d-gen`
 - **Research**: `advaiconv`, `researchboard`, `arena`, `aiconv`, `explained`
 - **Memory**: `memory`, `persistent-memory`, `sched-overview`
@@ -73,7 +73,6 @@ The sidebar organizes views into pinned core tools and 8 collapsible categories 
 - **Model Hub**: `local-models`, `image-models`, `audio-models`, `api-providers`, `3d-models`
 - **Library**: `voice-library`, `connectors`
 - **System**: `logs`, `documentation`, `usage`, `status`, `ports`
-- **Experimental**: `physics-lab`, `stats-lab`, `chembio-lab`, `worldsim`, `project-mapper`, `decision-trace`, `lexmap`, `supplymind`, `clinicaltrace`
 
 ---
 
