@@ -201,3 +201,31 @@ async def test_group_chat_media_tool_followup(tmp_path, monkeypatch):
     msg = turn_res["message"]
     assert "https://www.youtube.com/watch?v=abc123xyz78" in msg["content"]
     assert "[tool:" not in msg["content"]
+
+
+def test_group_chat_send_message_from_bridge(tmp_path, monkeypatch):
+    test_groups_dir = tmp_path / "groups"
+    monkeypatch.setattr("core.companions.group_chat_engine.GROUPS_DIR", test_groups_dir)
+    monkeypatch.setattr("core.utils.paths.COMPANION_GROUPS", test_groups_dir)
+    monkeypatch.setattr("core.bridges.group_chat_bridge.COMPANION_GROUPS", test_groups_dir)
+
+    group = GroupChatEngine.create_group(
+        title="Random Topics",
+        companion_ids=["misakacipher", "ruikosaten"],
+    )
+    gid = group["id"]
+
+    from core.bridges import group_chat_bridge
+    res = group_chat_bridge.send_message({
+        "group": "Random Topics",
+        "companion_id": "misakacipher",
+        "content": "Hey @Misaka, backend is feeling great today!",
+    })
+    assert "Posted message to group chat 'Random Topics'" in res
+
+    loaded = GroupChatEngine.get_group(gid)
+    posted = loaded["history"][-1]
+    assert posted["author_id"] == "misakacipher"
+    assert posted["author_role"] == "companion"
+    assert posted["source"] == "1on1_bridge"
+    assert "misakacipher" in posted["mentions"]

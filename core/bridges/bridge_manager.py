@@ -457,6 +457,9 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         elif low_arg.startswith(("scratchpad ", "notes ", "canvas ")):
             cmd = "read_scratchpad"
             args["group"] = arg_text.split(None, 1)[1] if len(arg_text.split()) > 1 else ""
+        elif low_arg.startswith(("send ", "post ", "say ")):
+            cmd = "send_message"
+            args["content"] = arg_text.split(None, 1)[1] if len(arg_text.split()) > 1 else ""
         else:
             cmd = "search_messages"
             args["query"] = arg_text

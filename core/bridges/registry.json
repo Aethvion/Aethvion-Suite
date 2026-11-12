@@ -444,7 +444,8 @@
                 "read_history": "Read the recent message history of a group chat. Args: 'group' (group title or ID, optional/fuzzy), 'limit' (optional, default 20).",
                 "read_scratchpad": "Read the shared brainstorming scratchpad for a group chat. Args: 'group' (group title or ID, optional/fuzzy), 'section' (optional).",
                 "list_groups": "List all group chats with their titles, member rosters, and recent activity.",
-                "append_scratchpad": "Append an idea or agreement to a group chat's shared scratchpad. Args: 'text' (required), 'group' (optional), 'section' (optional)."
+                "append_scratchpad": "Append an idea or agreement to a group chat's shared scratchpad. Args: 'text' (required), 'group' (optional), 'section' (optional).",
+                "send_message": "Send a message directly into a group chat as yourself. Args: 'content' (required), 'group' (group title or ID, optional/fuzzy)."
             },
             "settings": []
         },

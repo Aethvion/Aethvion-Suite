@@ -305,6 +305,7 @@ class GroupConductor:
         self._clock = clock
         self._rooms: Dict[str, Room] = {}
         self._ambient_task: Optional[asyncio.Task] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     # -- rooms and subscriptions
 
@@ -323,6 +324,10 @@ class GroupConductor:
         return room
 
     def subscribe(self, group_id: str) -> asyncio.Queue:
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
         q: asyncio.Queue = asyncio.Queue(maxsize=200)
         room = self.room(group_id)
         room.subscribers.add(q)
@@ -515,11 +520,28 @@ class GroupConductor:
 
     def ensure_started(self) -> None:
         """Start the ambient loop once. Safe to call from any request handler."""
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
         if self._ambient_task is None or self._ambient_task.done():
             try:
                 self._ambient_task = asyncio.ensure_future(self._ambient_loop())
             except RuntimeError:
                 pass
+
+    def _handle_external_message(self, group_id: str, message: Dict[str, Any]) -> None:
+        room = self.room(group_id)
+        # Boost energy slightly so companions in a quiet room can react to an incoming 1-on-1 message
+        room.energy = max(room.energy, 0.75)
+        room.streak = 0
+        self.on_message(group_id, message)
+
+    def notify_external_message(self, group_id: str, message: Dict[str, Any]) -> None:
+        """Thread-safe hook for posting a companion message from outside the group chat UI/loop."""
+        loop = self._loop
+        if loop and loop.is_running():
+            loop.call_soon_threadsafe(self._handle_external_message, group_id, message)
 
     async def _ambient_loop(self) -> None:
         while True:

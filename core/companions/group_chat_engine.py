@@ -489,6 +489,46 @@ class GroupChatEngine:
         return msg, companion_mentions
 
     @staticmethod
+    def post_companion_message(
+        group_id: str,
+        companion_id: str,
+        content: str,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+        source: str = "1on1_bridge",
+    ) -> Dict[str, Any]:
+        """Post a message into a group chat on behalf of a companion (e.g. from 1-on-1 chat)."""
+        meta = _load_meta(group_id)
+        if not meta:
+            raise ValueError(f"Group chat '{group_id}' not found")
+
+        members = meta.get("members", [])
+        cfg = CompanionRegistry.get_companion(companion_id)
+        raw_cfg = (getattr(cfg, "_raw_config", None) or {}) if cfg else {}
+        member_entry = next((m for m in members if m.get("id") == companion_id), None)
+
+        author_name = (cfg.name if cfg else None) or (member_entry.get("name") if member_entry else None) or companion_id.capitalize()
+        avatar_symbol = getattr(cfg, "avatar_symbol", None) or raw_cfg.get("avatar_symbol") or (member_entry.get("avatar_symbol") if member_entry else None) or "✦"
+        accent_color = getattr(cfg, "accent_color", None) or raw_cfg.get("accent_color") or (member_entry.get("accent_color") if member_entry else None) or "#8b5cf6"
+
+        mentions = extract_mentions(content, members)
+        msg_id = f"msg_{uuid.uuid4().hex[:6]}"
+        msg = {
+            "id": msg_id,
+            "author_id": companion_id,
+            "author_name": author_name,
+            "author_role": "companion",
+            "avatar_symbol": avatar_symbol,
+            "accent_color": accent_color,
+            "content": content.strip(),
+            "timestamp": utcnow_iso(),
+            "mentions": mentions,
+            "attachments": attachments or [],
+            "source": source,
+        }
+        append_history_message(group_id, msg)
+        return msg
+
+    @staticmethod
     async def generate_companion_turn(
         group_id: str,
         companion_id: str,

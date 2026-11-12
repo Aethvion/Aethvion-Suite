@@ -399,6 +399,44 @@ def append_scratchpad(args: Optional[Dict[str, Any]] = None) -> str:
         return f"Error appending to group scratchpad: {e}"
 
 
+def send_message(args: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Send a message into a companion group chat from 1-on-1 chat (or slash command).
+    Args:
+        'content', 'message', or 'text' (str, required): Message body to post.
+        'group' or 'group_id' (str, optional): Group title or ID (fuzzy matched).
+        'companion_id' (str, optional): Companion ID sending the message (auto-injected).
+    """
+    if args is None:
+        args = {}
+    content = (args.get("content") or args.get("message") or args.get("text") or "").strip()
+    if not content:
+        return "Please provide 'content' (or 'message') to send to the group chat."
+
+    companion_id = (args.get("companion_id") or "").strip()
+    if not companion_id:
+        return "Cannot send a companion group chat message without a 'companion_id'."
+
+    group_arg = args.get("group") or args.get("group_id")
+    gid, meta, _ = _find_group(group_arg, companion_id=companion_id)
+    if not gid or not meta:
+        return f"Group chat '{group_arg}' not found. Call `list_groups` to view available group chats."
+
+    try:
+        from core.companions.group_chat_engine import GroupChatEngine
+        from core.companions.group_conductor import get_conductor
+
+        msg = GroupChatEngine.post_companion_message(gid, companion_id, content)
+        get_conductor().notify_external_message(gid, msg)
+        title = meta.get("title", gid)
+        mentions = msg.get("mentions") or []
+        mention_note = f" (mentions: {', '.join('@' + m for m in mentions)})" if mentions else ""
+        return f"Posted message to group chat '{title}' ({gid}) as {msg.get('author_name')} [id={msg.get('id')}]{mention_note}."
+    except Exception as e:
+        logger.error(f"Failed to send message to group {gid} as {companion_id}: {e}")
+        return f"Error sending message to group chat: {e}"
+
+
 def get_group_chat_awareness_block(companion_id: Optional[str] = None) -> str:
     """
     Generate background ambient awareness block for a companion's system prompt.
