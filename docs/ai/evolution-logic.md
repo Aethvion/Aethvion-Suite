@@ -1,74 +1,34 @@
-Core architecture is consistent; self-evolution logic shifts towards Agentic Workspaces, Companion Memory, and Persistent Memory Topics. Updated: 2026-04-19.
+AETHVION SUITE EVOLUTION & SELF-MODIFICATION LOGIC
+=======================================================
 
-OVERVIEW
-Self-evolution in Aethvion Suite has transitioned from static **Tool Forging** to dynamic **Agentic Problem Solving** and **Companion Learning**. While the system can still autonomously write Python code files (The Forge), modern evolution occurs through agents operating in **Workspaces**, performing iterative ReAct loops, and persisting curated knowledge as **Persistent Memory Topics**. A parallel evolution axis is the **Companion Memory** system — companions build and refine their per-companion memory profiles over time through conversation.
+PURPOSE: Safe, non-destructive protocols for capability extension, companion growth, and codebase maintenance.
 
-DYNAMIC EVOLUTION PATHS
-1. **Agentic Workspaces (Modern)**: Agents use the `AgentRunner` to perform multi-step tasks. Successful patterns and scripts are saved within the workspace and documented in **Persistent Memory**.
-2. **Persistent Memory Topics (Modern)**: Curated "Ground Truth" facts and logic stored as JSON topics, indexed for semantic retrieval by future agents.
-3. **Companion Memory (Modern)**: Each companion maintains `base_info.json` (stable identity) and `memory.json` (dynamic profile) at `data/modes/companions/personas/{companion_id}/`. The memory module (`core/companions/engine/memory.py`) synthesizes conversation history into evolving memory entries via XML tag extraction. Companions grow more personalized over time.
-4. **The Forge Pipeline (Legacy/Static)**: Autonomous generation of permanent `.py` tools in `data/modes/workspaces/tools/generated/`. Used for highly reusable, general-purpose capabilities.
+1. REALTIME CONNECTOR EVOLUTION (Non-Destructive Evolution Protocol)
+Subsystem: core/bridges/dynamic_manager.py + core/bridges/dynamic_toolmaker.py
+Storage: data/bridges/dynamic/{tool_id}/
+Protocol:
+- Companions can propose and synthesize custom Python connectors at runtime via the Realtime Incubator (`/toolmaker`).
+- Existing connectors are NEVER destructively overwritten in place when another companion or request upgrades them:
+  - Changes create versioned revisions / candidate updates rather than clobbering active behavior.
+  - Usage counts, companion feedback, and compatibility are tracked so proven connectors can be promoted to native `core/bridges/` modules cleanly.
+- Safety rules:
+  - Validate syntax and required interface before activation.
+  - Preserve rollback capability to prior working versions.
+  - Expose lifecycle, versions, and status in the Dashboard Connectors view (`library -> connectors`).
 
-COMPANION MEMORY EVOLUTION
-Memory file: data/modes/companions/personas/{companion_id}/memory.json
-Identity file: data/modes/companions/personas/{companion_id}/base_info.json (stable; companion name, personality defaults)
-Memory module: core/companions/engine/memory.py — CompanionMemory class; loads both files, extracts <memory> XML tags from conversations, synthesizes updates, writes back
-Evolution cycle: conversation → XML tag extraction → memory synthesis → updated memory.json → future conversations get richer context
-Note: memory.json changes over time; base_info.json is stable and only updated intentionally.
+2. COMPANION MEMORY & GROUP COORDINATION
+Subsystem: core/companions/ + core/memory/
+Storage:
+- 1-on-1 Companion Brain: data/companions/{companion_id}/
+- Group Chats & Shared Scratchpads: data/companions/groups/{group_id}/
+- Episodic & Knowledge Memory: ChromaDB + NetworkX knowledge graph + persistent_memory.json
+Guidelines:
+- Keep 1-on-1 personal scratchpads/memories distinct from shared group scratchpads (`core/companions/group_conductor.py` + `scratchpad_bridge.py`).
+- Preserve companion persona definitions and user-curated memory entries across upgrades.
 
-PHASE 2: GENERATION (forge/code_generator.py::generate_tool_code())
-Step 2.1: Select template. Standard tool template includes: description header, trace_id, timestamp, type imports, API imports, function name, parameters, return type, docstring with Args/Returns/Raises, try-except block, self-test in __main__.
-Step 2.2: Generate implementation via LLM with requirements: use type hints, include error handling (try-except), no placeholder URLs (use actual API endpoints), no placeholder API keys (use os.environ.get()), PEP 8 style, include docstring, add self-test in __main__ block. Uses Flash model for code generation.
-Step 2.3: Inject API keys automatically. Generated tools check os.environ for available keys and fall back between providers. Pattern: check google_key = os.environ.get("GOOGLE_AI_API_KEY"), if available use Imagen/Gemini; elif openai_key use DALL-E/GPT; else raise RuntimeError. No hard-coded credentials.
-Step 2.4: Assemble complete tool by filling template with generated implementation, imports, docstrings, and self-test.
+3. WORKSPACE & CODEBASE MODIFICATION RULES
+- Canonical Paths: Always import paths from `core/utils/paths.py`. Never hardcode `data/modes/companions/` (companions moved to `data/companions/`, Code moved to `data/code/`).
+- Versioning: Never hardcode version strings; `core/version.py` derives `YYYY.MM.count (shorthash)` from git.
+- Verification: Run `pytest` after structural or behavioral changes and verify affected FastAPI routes.
 
-PHASE 3: VALIDATION (forge/tool_validator.py::validate_tool())
-Step 3.1: Syntax validation. ast.parse() must succeed. Failure severity: critical -> rejection, no registration.
-Step 3.2: Security scanning. Checks for: eval() or exec() presence (arbitrary code execution), subprocess.run with shell=True (injection risk), open() calls accessing paths outside outputfiles (unauthorized file access), regex match of (api_key|password|secret).*(print|log) (credential leakage). Any issue -> critical -> rejection.
-Step 3.3: Aethvion compliance. Name must match pattern [A-Z][a-zA-Z]+_[A-Z][a-zA-Z]+_[A-Z][a-zA-Z]+. Domain must be in approved list (Data, Code, System, Network, Image, Text, Math, Finance, Security, Database, File). Non-compliance: auto-fix if possible, else warn, else reject.
-Step 3.4: Functional validation (roadmap). Currently manual via __main__ self-test block. Future: sandboxed execution with assertion checks on test inputs.
-Readiness criteria: syntax valid AND security clean AND naming correct AND documentation present (docstring with Args/Returns) AND error handling present (try-except block) AND self-test passes.
-
-PHASE 4: REGISTRATION (forge/tool_registry.py::register_tool())
-Step 4.1: File persistence. Save to data/modes/workspaces/tools/generated/[domain]_[action]_[object].py, set executable permissions (0o755).
-Step 4.2: Registry update. Add entry to tools/registry.json with fields: name, path (relative to cwd), description, parameters ([{name, type, required, description}]), returns, created_at (ISO-8601), trace_id (MCTR-...), status ("active").
-Step 4.3: Knowledge graph update. Add tool node with metadata (description, parameters, created_at). Add domain node if not exists. Add belongs_to edge (Tool -> Domain:domain). Analyze implementation for tool dependencies and add uses edges.
-
-DECISION TREE: WHEN IS A TOOL READY
-Syntax valid? NO -> REJECT (critical). YES -> Security pass? NO -> REJECT (critical). YES -> Aethvion compliant? NO -> auto-fix -> fixed? NO -> REJECT; YES -> Register Tool -> Update Knowledge Graph -> TOOL IS READY.
-On readiness: saved to tools/generated/, added to tools/registry.json, registered in knowledge graph, immediately available system-wide.
-
-TOOL LIFECYCLE STATES
-active - initial state on registration; tool available for use by agents, orchestrator, and users
-testing - tool available but flagged as experimental; includes testing_until timestamp field
-deprecated - tool superseded by newer version; system warns users and suggests alternative; includes deprecated_at and superseded_by fields
-archived - tool removed from active registry; includes archived_at field
-
-SELF-IMPROVEMENT MECHANISM
-Cycle 1: basic capability. User requests -> system forges single tool -> capability added.
-Cycle 2: building on previous. User requests more complex task -> system reuses existing tools + forges new ones.
-Cycle 3: complex pipelines. Multiple existing tools combined with newly forged tools to form complete pipelines.
-Exponential growth pattern: Week 1: ~5 tools, Week 2: ~15 tools (10 new, many using Week 1 tools), Week 4: ~50 tools, Week 12: 200+ tools (fully self-sustaining ecosystem).
-Tool reuse analytics tracked per tool: times_used, used_by_agents, used_by_tools (other tools depending on this one), avg_success_rate, last_used. Used to identify high-value tools, detect unused tools (deprecation candidates), recognize common patterns, and optimize frequently used tools.
-
-VALIDATION FEEDBACK LOOP
-Detection: tool crash logged with trace_id; system tracks failure count per tool.
-Response when failure_count > 5: automatic re-generation attempt with improved description referencing common error and original tool as baseline. If new version passes validation: deprecate old version, register new version with supersedes field pointing to original.
-Self-healing: system automatically improves failed tools without human intervention.
-
-TOOL TEMPLATES (FUTURE)
-API Client template: class with __init__ loading API key from env and setting base_url, plus methods using requests with Authorization header. Triggered when system detects "Create API client for X" pattern.
-Data Processor template: function with input validation, item processing loop, and aggregation step. Triggered for batch transformation patterns.
-
-QUALITY METRICS
-Tool generation success rate: ~95% first-attempt (target >90%). Breakdown: ~3% fail security, ~1.5% fail syntax, ~0.5% fail Aethvion.
-Tool reliability: ~99% execution success rate (target >95%).
-
-EVOLUTION SUMMARY
-Self-evolution now enables six integrated capabilities: **Workspace Execution** (iterative task solving), **Companion Learning** (per-companion memory growth), **Persistent Knowledge Hub** (curated long-term learning), **Self-Improvement** (automatic fixing of agentic scripts), **Skill Documentation** (agent-written memory topics), and **Universal Orchestration** (AetherCore routing).
-Result: The system becomes exponentially more capable by accumulating both **Code (Tools)**, **Companion Knowledge (Memory)**, and **System Knowledge (Persistent Memory)**.
-Current focus: Transitioning from a "Tool-First" mindset to a "Capability-First" architecture where agents and companions are the primary drivers of evolution.
-
-LAST UPDATED: 2026-04-19
-STATUS: Active System Documentation (v15)
-NEXT EVOLUTION: Deeper Companion-Memory integration, Cross-Companion Knowledge Transfer, Automated Persistent Memory Refinement
+LAST UPDATED: 2026-11-12
