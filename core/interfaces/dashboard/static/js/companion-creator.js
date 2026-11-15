@@ -5074,7 +5074,7 @@ const CompanionCreator = (() => {
             document.addEventListener(evtName, () => { _lastInteractionTs = Date.now(); }, { passive: true });
         });
         _proactiveTimer = setInterval(() => {
-            if (!_editingId || _chatStreaming) return;
+            if (document.hidden || !_editingId || _chatStreaming) return;
             const enabled = document.getElementById('cc-proactive-enabled')?.checked
                 ?? _prefGet(`${_editingId}.proactive_enabled`, false);
             if (!enabled) return;
@@ -5139,6 +5139,7 @@ const CompanionCreator = (() => {
     function _ensureGroupListPolling() {
         if (_gcUnreadPollTimer) return;
         _gcUnreadPollTimer = setInterval(() => {
+            if (document.hidden) return;
             const groupEl = document.getElementById('cc-group-list');
             if (groupEl && groupEl.offsetParent !== null) {
                 _loadGroupChats();

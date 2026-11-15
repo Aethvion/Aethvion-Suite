@@ -554,7 +554,7 @@ window.AethvionCompanionPresence = (() => {
         });
 
         _heartbeatTimer = setInterval(async () => {
-            if (_popupStreaming) return;
+            if (document.hidden || _popupStreaming) return;
             try {
                 const res = await fetch(`${CREATOR_API}/all`);
                 if (res.ok) {
@@ -595,7 +595,7 @@ window.AethvionCompanionPresence = (() => {
 
     function _startReminderWatcher() {
         setInterval(async () => {
-            if (_popupStreaming) return;
+            if (document.hidden || _popupStreaming) return;
             try {
                 const res = await fetch('/api/connectors/reminders/due');
                 if (!res.ok) return;
@@ -646,7 +646,7 @@ window.AethvionCompanionPresence = (() => {
 
     function _startCompanionTimerWatcher() {
         setInterval(async () => {
-            if (_popupStreaming) return;
+            if (document.hidden || _popupStreaming) return;
             try {
                 const res = await fetch('/api/companions/timers/due');
                 if (!res.ok) return;
