@@ -27,6 +27,7 @@ const CompanionCreator = (() => {
     let _groupEventSource = null;        // live event stream of the open group
     let _groupSeenIds = new Set();       // message ids already on screen
     let _groupTypers = new Map();        // companion id -> name, currently typing
+    const _companionHasIcon = new Map(); // companion id -> boolean (avoids 404 icon fetches)
 
     // Shell
 
@@ -934,6 +935,7 @@ const CompanionCreator = (() => {
             const res  = await fetch(`${API}/all`);
             const data = await res.json();
             const all  = data.companions || [];
+            all.forEach(c => { if (c?.id) _companionHasIcon.set(c.id, !!c.has_icon); });
 
             const builtins = _sortByLastInteraction(all.filter(c =>  c._builtin));
             const customs  = _sortByLastInteraction(all.filter(c => !c._builtin));
@@ -3395,7 +3397,7 @@ const CompanionCreator = (() => {
         if (!stageEl || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return;
         stageEl.onclick = null;
         stageEl.classList.add('cc-yt-stage-playing');
-        stageEl.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0" class="cc-yt-iframe" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+        stageEl.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0" class="cc-yt-iframe" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
     };
 
     window.__renderAethvionYoutubeCards = function(text, existingIds = null) {
@@ -3491,7 +3493,7 @@ const CompanionCreator = (() => {
             : `https://player.twitch.tv/?channel=${id}&parent=${parent}&autoplay=true&muted=false`;
         stageEl.onclick = null;
         stageEl.classList.add('cc-yt-stage-playing');
-        stageEl.innerHTML = `<iframe src="${src}" class="cc-yt-iframe" title="Twitch player" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+        stageEl.innerHTML = `<iframe src="${src}" class="cc-yt-iframe" title="Twitch player" frameborder="0" allow="autoplay; fullscreen"></iframe>`;
     };
 
     window.__renderAethvionTwitchCards = function(text, existingIds = null) {
@@ -3557,7 +3559,6 @@ const CompanionCreator = (() => {
                 width="100%"
                 height="${height}"
                 frameBorder="0"
-                allowfullscreen=""
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy"
                 class="cc-sp-iframe"
@@ -5094,7 +5095,7 @@ const CompanionCreator = (() => {
     // =========================================================================
 
     function _renderGroupAvatar(id, name, symbol, color = '#6366f1', size = 20) {
-        if (!id || id === 'marcel' || id === 'system') {
+        if (!id || id === 'marcel' || id === 'system' || !_companionHasIcon.get(id)) {
             const sym = symbol || (id === 'marcel' ? '👤' : '✦');
             return `<span class="gc-avatar-fallback" style="display:inline-flex; align-items:center; justify-content:center; width:${size}px; height:${size}px; border-radius:50%; background:${color}22; color:${color}; font-size:${Math.max(10, Math.round(size * 0.62))}px; line-height:1; flex-shrink:0;">${_esc(sym)}</span>`;
         }
