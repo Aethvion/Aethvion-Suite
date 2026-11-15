@@ -54,6 +54,33 @@
                         </div>
                     </div>
 
+                    <!-- Active Loops & Background Services Section -->
+                    <div class="section-header-row" style="margin-top: 2.5rem;">
+                        <div class="section-label" style="margin-bottom: 0;">
+                            ACTIVE LOOPS &amp; BACKGROUND SERVICES
+                            <span id="loops-summary-pill" class="loops-summary-pill">--</span>
+                        </div>
+                        <div class="local-meta-right" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="action-btn secondary xs-btn" id="loops-enable-companions-btn" title="Enable all Companion loops on startup">
+                                <i class="fas fa-play"></i> Enable Optional on Startup
+                            </button>
+                            <button type="button" class="action-btn secondary xs-btn" id="loops-disable-optional-btn" title="Disable non-critical/optional loops on startup (e.g. if only using Automate)">
+                                <i class="fas fa-power-off"></i> Minimal Mode (Disable Optional)
+                            </button>
+                        </div>
+                    </div>
+                    <div id="loops-filter-bar" class="loops-filter-bar">
+                        <button type="button" class="loops-filter-btn active" data-filter="all">All</button>
+                        <button type="button" class="loops-filter-btn" data-filter="critical">Critical</button>
+                        <button type="button" class="loops-filter-btn" data-filter="standard">Standard</button>
+                        <button type="button" class="loops-filter-btn" data-filter="optional">Optional</button>
+                        <button type="button" class="loops-filter-btn" data-filter="running">Running</button>
+                        <button type="button" class="loops-filter-btn" data-filter="stopped">Paused / Stopped</button>
+                    </div>
+                    <div id="active-loops-list" class="active-loops-list">
+                        <div class="placeholder-text">Loading registered loops…</div>
+                    </div>
+
                     <!-- Features Checklist -->
                     <div class="section-header-row">
                         <div class="section-label" style="margin-bottom: 0;">ROADMAP & FEATURES</div>

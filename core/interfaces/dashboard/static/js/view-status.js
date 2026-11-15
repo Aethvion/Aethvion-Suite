@@ -39,6 +39,7 @@ async function loadSystemStatusTab() {
         if (contactEl && sys.contact) contactEl.href = `mailto:${sys.contact}`;
 
         renderSystemTelemetry(apiData, metricsData);
+        initLoopsPanel();
 
         const roadmap = roadmapData.roadmap || {};
         let html = '';
@@ -118,15 +119,170 @@ async function loadSystemStatusTab() {
 }
 
 let vitalsInterval = null;
+let _loopsFilter = 'all';
+let _loopsUnsub = null;
+
+function _formatInterval(ms) {
+    if (!ms || ms < 1000) return `${ms || 0}ms`;
+    if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+    return `${Math.round(ms / 60000)}m`;
+}
+
+function _formatAgo(ts) {
+    if (!ts) return 'Never';
+    const diff = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (diff < 5) return 'Just now';
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+}
+
+function renderActiveLoops() {
+    const listEl = document.getElementById('active-loops-list');
+    const summaryEl = document.getElementById('loops-summary-pill');
+    if (!listEl || !window.AethvionLoops) return;
+
+    const all = window.AethvionLoops.list();
+    const summary = window.AethvionLoops.getSummary();
+
+    if (summaryEl) {
+        summaryEl.textContent = `${summary.running} running · ${summary.paused + summary.stopped} inactive (${summary.total} total)`;
+    }
+
+    const filtered = all.filter(item => {
+        if (_loopsFilter === 'all') return true;
+        if (_loopsFilter === 'critical' || _loopsFilter === 'standard' || _loopsFilter === 'optional') {
+            return item.criticality === _loopsFilter;
+        }
+        if (_loopsFilter === 'running') return item.status === 'running';
+        if (_loopsFilter === 'stopped') return item.status !== 'running';
+        return true;
+    });
+
+    if (!filtered.length) {
+        listEl.innerHTML = `<div class="placeholder-text">No loops match the "${_loopsFilter}" filter.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+        const isRunning = item.status === 'running';
+        const isPaused = item.status === 'paused';
+        const statusLabel = isRunning ? 'Running' : (isPaused ? 'Paused' : 'Stopped');
+        const critLabel = item.criticality === 'critical' ? 'Critical' : (item.criticality === 'standard' ? 'Standard' : 'Optional');
+        const metaParts = [
+            `Every ${_formatInterval(item.intervalMs)}`,
+            `Runs: ${item.runCount}`,
+            `Last: ${_formatAgo(item.lastRunAt)}`,
+            item.lastDurationMs !== null ? `${item.lastDurationMs}ms` : null,
+        ].filter(Boolean).join(' · ');
+
+        return `
+        <div class="loop-row" data-loop-id="${item.id}">
+            <div class="loop-row-main">
+                <div class="loop-row-title-line">
+                    <span class="loop-name">${item.name}</span>
+                    <span class="loop-badge loop-crit-${item.criticality}">${critLabel}</span>
+                    <span class="loop-badge loop-cat">${item.category}</span>
+                    <span class="loop-status-pill loop-status-${item.status}">● ${statusLabel}</span>
+                </div>
+                <div class="loop-desc">${item.description || item.id}</div>
+                <div class="loop-meta">${metaParts}${item.lastError ? ` · <span class="loop-err">Error: ${item.lastError}</span>` : ''}</div>
+            </div>
+            <div class="loop-row-controls">
+                <label class="loop-startup-toggle" title="Start this loop automatically on dashboard startup">
+                    <input type="checkbox" class="loop-autostart-cb" data-loop-id="${item.id}" ${item.autoStart ? 'checked' : ''}>
+                    <span>Startup</span>
+                </label>
+                <div class="loop-btn-group">
+                    ${isRunning
+                        ? `<button type="button" class="action-btn secondary xs-btn loop-action-btn" data-action="pause" data-loop-id="${item.id}" title="Pause loop"><i class="fas fa-pause"></i> Pause</button>`
+                        : `<button type="button" class="action-btn xs-btn loop-action-btn" data-action="start" data-loop-id="${item.id}" title="Start loop"><i class="fas fa-play"></i> Start</button>`
+                    }
+                    ${item.status !== 'stopped'
+                        ? `<button type="button" class="action-btn secondary xs-btn loop-action-btn" data-action="stop" data-loop-id="${item.id}" title="Stop loop"><i class="fas fa-stop"></i></button>`
+                        : ''
+                    }
+                    <button type="button" class="action-btn secondary xs-btn loop-action-btn" data-action="run" data-loop-id="${item.id}" title="Run one tick now"><i class="fas fa-bolt"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function initLoopsPanel() {
+    if (!window.AethvionLoops) return;
+
+    const filterBar = document.getElementById('loops-filter-bar');
+    if (filterBar && !filterBar.dataset.bound) {
+        filterBar.dataset.bound = '1';
+        filterBar.addEventListener('click', e => {
+            const btn = e.target.closest('.loops-filter-btn');
+            if (!btn) return;
+            _loopsFilter = btn.dataset.filter || 'all';
+            filterBar.querySelectorAll('.loops-filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+            renderActiveLoops();
+        });
+    }
+
+    const listEl = document.getElementById('active-loops-list');
+    if (listEl && !listEl.dataset.bound) {
+        listEl.dataset.bound = '1';
+        listEl.addEventListener('click', e => {
+            const btn = e.target.closest('.loop-action-btn');
+            if (!btn) return;
+            const id = btn.dataset.loopId;
+            const action = btn.dataset.action;
+            if (!id || !action) return;
+            if (action === 'start') window.AethvionLoops.start(id);
+            else if (action === 'pause') window.AethvionLoops.pause(id);
+            else if (action === 'stop') window.AethvionLoops.stop(id);
+            else if (action === 'run') window.AethvionLoops.runNow(id);
+            renderActiveLoops();
+        });
+
+        listEl.addEventListener('change', e => {
+            const cb = e.target.closest('.loop-autostart-cb');
+            if (!cb) return;
+            window.AethvionLoops.setAutoStart(cb.dataset.loopId, cb.checked);
+            renderActiveLoops();
+        });
+    }
+
+    const enableBtn = document.getElementById('loops-enable-companions-btn');
+    if (enableBtn && !enableBtn.dataset.bound) {
+        enableBtn.dataset.bound = '1';
+        enableBtn.addEventListener('click', () => {
+            window.AethvionLoops.setOptionalAutoStart(true, true);
+            renderActiveLoops();
+        });
+    }
+
+    const disableBtn = document.getElementById('loops-disable-optional-btn');
+    if (disableBtn && !disableBtn.dataset.bound) {
+        disableBtn.dataset.bound = '1';
+        disableBtn.addEventListener('click', () => {
+            window.AethvionLoops.setOptionalAutoStart(false, true);
+            renderActiveLoops();
+        });
+    }
+
+    if (!_loopsUnsub) {
+        _loopsUnsub = window.AethvionLoops.onChange(() => {
+            if (document.querySelector('.main-tab-panel.active')?.id === 'status-panel') {
+                renderActiveLoops();
+            }
+        });
+    }
+
+    renderActiveLoops();
+}
 
 function startVitalsPolling() {
-    if (vitalsInterval) return;
-    vitalsInterval = setInterval(async () => {
+    const tickVitals = async () => {
         if (document.querySelector('.main-tab-panel.active')?.id !== 'status-panel') {
             stopVitalsPolling();
             return;
         }
-
         try {
             const res = await fetch('/api/system/status');
             if (res.ok) {
@@ -134,10 +290,28 @@ function startVitalsPolling() {
                 updateRealtimeVitals(data);
             }
         } catch (e) { console.warn('Vitals poll failed', e); }
-    }, 3000);
+    };
+
+    if (window.AethvionLoops) {
+        window.AethvionLoops.register('status.vitals', {
+            name: 'Status Realtime Vitals',
+            category: 'Status',
+            criticality: 'standard',
+            description: 'Polls live CPU, RAM, and agent counts while the Status tab is open.',
+            intervalMs: 3000,
+            fn: tickVitals,
+        });
+        return;
+    }
+
+    if (vitalsInterval) return;
+    vitalsInterval = setInterval(tickVitals, 3000);
 }
 
 function stopVitalsPolling() {
+    if (window.AethvionLoops) {
+        window.AethvionLoops.stop('status.vitals');
+    }
     if (vitalsInterval) {
         clearInterval(vitalsInterval);
         vitalsInterval = null;

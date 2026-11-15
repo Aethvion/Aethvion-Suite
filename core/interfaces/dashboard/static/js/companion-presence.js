@@ -553,7 +553,7 @@ window.AethvionCompanionPresence = (() => {
             document.addEventListener(evt, () => { _lastInteractionTs = Date.now(); }, { passive: true });
         });
 
-        _heartbeatTimer = setInterval(async () => {
+        const runHeartbeatTick = async () => {
             if (document.hidden || _popupStreaming) return;
             try {
                 const res = await fetch(`${CREATOR_API}/all`);
@@ -590,11 +590,24 @@ window.AethvionCompanionPresence = (() => {
                     await triggerProactiveForCompanion(cid, 'proactive');
                 }
             }
-        }, 60000);
+        };
+
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('companions.heartbeat', {
+                name: 'Companion Proactive Heartbeat',
+                category: 'Companions',
+                criticality: 'optional',
+                description: 'Checks idle time for proactive companion check-ins across the suite.',
+                intervalMs: 60000,
+                fn: runHeartbeatTick,
+            });
+        } else {
+            _heartbeatTimer = setInterval(runHeartbeatTick, 60000);
+        }
     }
 
     function _startReminderWatcher() {
-        setInterval(async () => {
+        const runReminderTick = async () => {
             if (document.hidden || _popupStreaming) return;
             try {
                 const res = await fetch('/api/connectors/reminders/due');
@@ -641,11 +654,23 @@ window.AethvionCompanionPresence = (() => {
                     });
                 }
             } catch {}
-        }, 20000);
+        };
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('companions.reminders', {
+                name: 'Co-Working Reminder Watcher',
+                category: 'Companions',
+                criticality: 'optional',
+                description: 'Polls for due companion co-working reminders.',
+                intervalMs: 20000,
+                fn: runReminderTick,
+            });
+        } else {
+            setInterval(runReminderTick, 20000);
+        }
     }
 
     function _startCompanionTimerWatcher() {
-        setInterval(async () => {
+        const runTimerTick = async () => {
             if (document.hidden || _popupStreaming) return;
             try {
                 const res = await fetch('/api/companions/timers/due');
@@ -699,7 +724,19 @@ window.AethvionCompanionPresence = (() => {
                     }
                 }
             } catch {}
-        }, 10000);
+        };
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('companions.timers', {
+                name: 'Companion Follow-Up Timers',
+                category: 'Companions',
+                criticality: 'optional',
+                description: 'Polls for scheduled companion follow-up timers.',
+                intervalMs: 10000,
+                fn: runTimerTick,
+            });
+        } else {
+            setInterval(runTimerTick, 10000);
+        }
     }
 
     function init() {

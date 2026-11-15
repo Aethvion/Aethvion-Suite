@@ -5138,13 +5138,26 @@ const CompanionCreator = (() => {
 
     function _ensureGroupListPolling() {
         if (_gcUnreadPollTimer) return;
-        _gcUnreadPollTimer = setInterval(() => {
+        const pollGroups = () => {
             if (document.hidden) return;
             const groupEl = document.getElementById('cc-group-list');
             if (groupEl && groupEl.offsetParent !== null) {
                 _loadGroupChats();
             }
-        }, 10000);
+        };
+        if (window.AethvionLoops) {
+            _gcUnreadPollTimer = true;
+            window.AethvionLoops.register('companions.group_unread', {
+                name: 'Group Chat Unread Poll',
+                category: 'Companions',
+                criticality: 'optional',
+                description: 'Refreshes unread message badges on companion group chats.',
+                intervalMs: 10000,
+                fn: pollGroups,
+            });
+        } else {
+            _gcUnreadPollTimer = setInterval(pollGroups, 10000);
+        }
     }
 
     async function _loadGroupChats() {

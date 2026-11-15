@@ -646,8 +646,19 @@
             if (c) setVal('snap-cost-val', c);
         }
         syncUsage();
-        const usageTick = setInterval(syncUsage, 5000);
-        window._suiteHomeUsageTick = usageTick;
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('suite.usage_sync', {
+                name: 'Suite Home Usage Snapshot',
+                category: 'Suite',
+                criticality: 'standard',
+                description: 'Syncs today’s token & cost counters onto the Suite Home snapshot card.',
+                intervalMs: 5000,
+                fn: syncUsage,
+            });
+        } else {
+            const usageTick = setInterval(syncUsage, 5000);
+            window._suiteHomeUsageTick = usageTick;
+        }
 
         let tries = 0;
         const ticker = setInterval(() => {

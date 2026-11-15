@@ -810,9 +810,20 @@ function initializeUI() {
     });
 
     // Periodically update module badges (paused when hidden)
-    setInterval(() => {
-        if (!document.hidden) updateModuleStatusBadges();
-    }, 10000);
+    if (window.AethvionLoops) {
+        window.AethvionLoops.register('core.module_badges', {
+            name: 'Module Status Badges',
+            category: 'Core',
+            criticality: 'critical',
+            description: 'Keeps sidebar module online/offline badges up to date.',
+            intervalMs: 10000,
+            fn: updateModuleStatusBadges,
+        });
+    } else {
+        setInterval(() => {
+            if (!document.hidden) updateModuleStatusBadges();
+        }, 10000);
+    }
     setTimeout(updateModuleStatusBadges, 2000);
 
     // Sidebar Toggle
@@ -1388,9 +1399,20 @@ function _renderPanelTimestamp(panelKey) {
 }
 
 // Refresh all displayed timestamps every 30s
-setInterval(() => {
-    Object.keys(_panelFetchTimes).forEach(_renderPanelTimestamp);
-}, 30000);
+if (window.AethvionLoops) {
+    window.AethvionLoops.register('core.panel_timestamps', {
+        name: 'Panel Relative Timestamps',
+        category: 'Core',
+        criticality: 'optional',
+        description: 'Refreshes "Updated Xm ago" labels on open dashboard panels.',
+        intervalMs: 30000,
+        fn: () => Object.keys(_panelFetchTimes).forEach(_renderPanelTimestamp),
+    });
+} else {
+    setInterval(() => {
+        Object.keys(_panelFetchTimes).forEach(_renderPanelTimestamp);
+    }, 30000);
+}
 window.markPanelUpdated = markPanelUpdated;
 
 async function switchMainTab(tabName, save = true) {
@@ -1876,15 +1898,37 @@ async function loadInitialData() {
     }, { once: true });
 
     if (typeof loadSystemStatus === 'function') {
-        setInterval(() => {
-            if (!document.hidden) loadSystemStatus();
-        }, 5000);
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('core.system_status', {
+                name: 'Core System Status',
+                category: 'Core',
+                criticality: 'critical',
+                description: 'Monitors backend server readiness, orchestrator state, and vitals.',
+                intervalMs: 5000,
+                fn: loadSystemStatus,
+            });
+        } else {
+            setInterval(() => {
+                if (!document.hidden) loadSystemStatus();
+            }, 5000);
+        }
     }
 
     if (typeof loadHeaderStatus === 'function') {
-        setInterval(() => {
-            if (!document.hidden) loadHeaderStatus();
-        }, 15000);
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('core.header_status', {
+                name: 'Header Provider & Model Status',
+                category: 'Core',
+                criticality: 'standard',
+                description: 'Refreshes top-bar active provider, model, and usage indicators.',
+                intervalMs: 15000,
+                fn: loadHeaderStatus,
+            });
+        } else {
+            setInterval(() => {
+                if (!document.hidden) loadHeaderStatus();
+            }, 15000);
+        }
     }
 }
 

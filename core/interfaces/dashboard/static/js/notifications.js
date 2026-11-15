@@ -431,9 +431,20 @@ function _isHidden(source) {
         _fetchActive().then(() => _updateBadge());
 
         // Poll every 30s for server-side pushes (paused when hidden)
-        _pollInterval = setInterval(() => {
-            if (!document.hidden) _fetchActive();
-        }, POLL_MS);
+        if (window.AethvionLoops) {
+            window.AethvionLoops.register('notifications.poll', {
+                name: 'Notification Center Poll',
+                category: 'Notifications',
+                criticality: 'standard',
+                description: 'Checks for new server-side notifications and badge updates.',
+                intervalMs: POLL_MS,
+                fn: _fetchActive,
+            });
+        } else {
+            _pollInterval = setInterval(() => {
+                if (!document.hidden) _fetchActive();
+            }, POLL_MS);
+        }
 
         console.log('[Notifications] Initialized');
     }
