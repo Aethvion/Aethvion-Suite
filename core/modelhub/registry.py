@@ -38,7 +38,24 @@ _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_\-]{1,62}$")
 _BUILTIN_PREFIXES = ("llm:", "image:", "3d:", "demo:")
 
 # Folder name under localmodels/3d  ->  model id used by the 3D tab
-_KNOWN_3D = {"trellis2": "trellis-2", "triposr": "triposr", "crm": "crm"}
+_KNOWN_3D = {"trellis2": "trellis-2", "hunyuan3d": "hunyuan3d", "triposr": "triposr"}
+_KNOWN_3D_META = {
+    "trellis-2": {
+        "name": "TRELLIS.2-4B (PBR)",
+        "capabilities": ["mesh.generate"],
+        "description": "Microsoft TRELLIS.2-4B local image-to-3D with full O-Voxel PBR materials.",
+    },
+    "hunyuan3d": {
+        "name": "Hunyuan3D 2.1 (PBR)",
+        "capabilities": ["mesh.generate", "mesh.texture"],
+        "description": "Tencent Hunyuan3D 2.1 local shape + multi-view PBR texture pipeline.",
+    },
+    "triposr": {
+        "name": "TripoSR (Fast Draft)",
+        "capabilities": ["mesh.generate"],
+        "description": "Stability AI TripoSR rapid single-image silhouette mesh draft.",
+    },
+}
 
 
 def _ep(id: str, name: str, adapter: str, capabilities: list[str], *, description: str = "",
@@ -131,11 +148,15 @@ def _3d_endpoints() -> list[dict]:
         model_id = _KNOWN_3D.get(folder, folder)
         d = dirs.get(folder)
         installed = bool(d and (d / "venv").exists() and (d / "run_server.py").exists())
+        meta = _KNOWN_3D_META.get(model_id, {})
         out.append(_ep(
-            f"3d:{model_id}", model_id, "suite-3d", ["mesh.generate"],
-            description="Local 3D generation worker (3D tab)",
+            f"3d:{model_id}",
+            meta.get("name", model_id),
+            "suite-3d",
+            meta.get("capabilities", ["mesh.generate"]),
+            description=meta.get("description", "Local 3D generation worker (3D tab)"),
             available=installed,
-            reason="" if installed else "Not installed — install it from the 3D tab.",
+            reason="" if installed else "Not installed — install it from the 3D Models tab.",
             group="Local 3D",
         ))
     return out

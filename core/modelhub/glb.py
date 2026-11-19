@@ -12,6 +12,7 @@ processing is done; for that, plug Blender or another tool in as a `command` end
 from __future__ import annotations
 
 import json
+import math
 import struct
 from pathlib import Path
 from typing import Any, Optional
@@ -302,3 +303,149 @@ def apply_base_color_texture(glb_data: bytes, image_bytes: bytes, mime: str = "i
         for prim in mesh.get("primitives", []):
             prim["material"] = mat_idx
     return build_glb(gltf, bin_chunk)
+
+
+def normalize_glb(
+    data: bytes,
+    *,
+    center_xz: bool = True,
+    ground_y: bool = True,
+    target_size: float = 1.0,
+    rotate_y_deg: float = 0.0,
+) -> tuple[bytes, dict]:
+    """Center X/Z, snap Y-min to 0, uniformly scale to *target_size*, and rotate around Y.
+
+    Pure-Python binary glTF transform that preserves UVs, PBR textures, materials,
+    indices, and animations.  Deduplicates accessor indices so shared buffers are
+    never transformed twice.
+    """
+    gltf, bin_chunk = parse_glb(data)
+    buf = bytearray(bin_chunk)
+    accessors = gltf.get("accessors", [])
+    views = gltf.get("bufferViews", [])
+
+    pos_ids: set[int] = set()
+    nrm_ids: set[int] = set()
+    tan_ids: set[int] = set()
+    for mesh in gltf.get("meshes", []):
+        for prim in mesh.get("primitives", []):
+            attrs = prim.get("attributes", {})
+            for key, bucket in (("POSITION", pos_ids), ("NORMAL", nrm_ids), ("TANGENT", tan_ids)):
+                idx = attrs.get(key)
+                if isinstance(idx, int) and 0 <= idx < len(accessors):
+                    bucket.add(idx)
+
+    if not pos_ids:
+        return data, _glb_stats(data)
+
+    rad = math.radians(float(rotate_y_deg or 0.0))
+    cos_a = math.cos(rad)
+    sin_a = math.sin(rad)
+    do_rot = abs(rad) > 1e-7
+
+    def _rot_y(x: float, y: float, z: float) -> tuple[float, float, float]:
+        if not do_rot:
+            return x, y, z
+        return (x * cos_a + z * sin_a, y, -x * sin_a + z * cos_a)
+
+    def _acc_layout(acc_idx: int, expected_comps: int):
+        acc = accessors[acc_idx]
+        if acc.get("componentType") != 5126:
+            return None
+        bv_idx = acc.get("bufferView")
+        if not isinstance(bv_idx, int) or not (0 <= bv_idx < len(views)):
+            return None
+        bv = views[bv_idx]
+        stride = int(bv.get("byteStride") or (expected_comps * 4))
+        base = int(bv.get("byteOffset", 0)) + int(acc.get("byteOffset", 0))
+        count = int(acc.get("count", 0))
+        return acc, base, stride, count
+
+    # Pass 1: compute global bounding box after optional Y rotation
+    bb_min = [math.inf, math.inf, math.inf]
+    bb_max = [-math.inf, -math.inf, -math.inf]
+    any_vert = False
+
+    for idx in pos_ids:
+        info = _acc_layout(idx, 3)
+        if not info:
+            continue
+        _acc, base, stride, count = info
+        for i in range(count):
+            off = base + i * stride
+            if off + 12 > len(buf):
+                break
+            x, y, z = struct.unpack_from("<fff", buf, off)
+            rx, ry, rz = _rot_y(x, y, z)
+            any_vert = True
+            if rx < bb_min[0]: bb_min[0] = rx
+            if ry < bb_min[1]: bb_min[1] = ry
+            if rz < bb_min[2]: bb_min[2] = rz
+            if rx > bb_max[0]: bb_max[0] = rx
+            if ry > bb_max[1]: bb_max[1] = ry
+            if rz > bb_max[2]: bb_max[2] = rz
+
+    if not any_vert:
+        return data, _glb_stats(data)
+
+    extents = [bb_max[0] - bb_min[0], bb_max[1] - bb_min[1], bb_max[2] - bb_min[2]]
+    max_extent = max(extents)
+    scale = (float(target_size) / max_extent) if (target_size and target_size > 0 and max_extent > 1e-8) else 1.0
+    tx = -0.5 * (bb_min[0] + bb_max[0]) * scale if center_xz else 0.0
+    ty = -bb_min[1] * scale if ground_y else 0.0
+    tz = -0.5 * (bb_min[2] + bb_max[2]) * scale if center_xz else 0.0
+
+    # Pass 2: write transformed positions and update per-accessor min/max
+    for idx in pos_ids:
+        info = _acc_layout(idx, 3)
+        if not info:
+            continue
+        acc, base, stride, count = info
+        a_min = [math.inf, math.inf, math.inf]
+        a_max = [-math.inf, -math.inf, -math.inf]
+        for i in range(count):
+            off = base + i * stride
+            if off + 12 > len(buf):
+                break
+            x, y, z = struct.unpack_from("<fff", buf, off)
+            rx, ry, rz = _rot_y(x, y, z)
+            nx, ny, nz = rx * scale + tx, ry * scale + ty, rz * scale + tz
+            struct.pack_into("<fff", buf, off, nx, ny, nz)
+            if nx < a_min[0]: a_min[0] = nx
+            if ny < a_min[1]: a_min[1] = ny
+            if nz < a_min[2]: a_min[2] = nz
+            if nx > a_max[0]: a_max[0] = nx
+            if ny > a_max[1]: a_max[1] = ny
+            if nz > a_max[2]: a_max[2] = nz
+        if count > 0 and all(math.isfinite(v) for v in a_min + a_max):
+            acc["min"] = [round(v, 6) for v in a_min]
+            acc["max"] = [round(v, 6) for v in a_max]
+
+    if do_rot:
+        for idx in nrm_ids:
+            info = _acc_layout(idx, 3)
+            if not info:
+                continue
+            _acc, base, stride, count = info
+            for i in range(count):
+                off = base + i * stride
+                if off + 12 > len(buf):
+                    break
+                nx, ny, nz = struct.unpack_from("<fff", buf, off)
+                rx, ry, rz = _rot_y(nx, ny, nz)
+                struct.pack_into("<fff", buf, off, rx, ry, rz)
+        for idx in tan_ids:
+            info = _acc_layout(idx, 4)
+            if not info:
+                continue
+            _acc, base, stride, count = info
+            for i in range(count):
+                off = base + i * stride
+                if off + 16 > len(buf):
+                    break
+                txv, tyv, tzv, twv = struct.unpack_from("<ffff", buf, off)
+                rx, ry, rz = _rot_y(txv, tyv, tzv)
+                struct.pack_into("<ffff", buf, off, rx, ry, rz, twv)
+
+    out_bytes = build_glb(gltf, bytes(buf))
+    return out_bytes, _glb_stats(out_bytes)

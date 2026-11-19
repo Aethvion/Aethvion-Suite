@@ -4,34 +4,63 @@ API endpoints for 3D model generation and asset management.
 """
 
 import base64
+import shutil
+import threading
+import time
 import uuid
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import httpx
 import subprocess
 import socket
 import asyncio
-from pathlib import Path
 
 from core.workspace import get_workspace_manager
 from core.utils import get_logger
+from core.utils.paths import LOCAL_MODELS_3D, LOGS_SYSTEM
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/3d", tags=["3d"])
 
+_MODEL_DISPLAY_NAMES = {
+    "trellis-2": "TRELLIS.2-4B",
+    "hunyuan3d": "Hunyuan3D 2.1",
+    "triposr": "TripoSR",
+}
+_HEAVY_3D_MODELS = {"trellis-2", "hunyuan3d"}
+_GPU_3D_LOCK = threading.Lock()
+
+
 class ThreeDGenerationRequest(BaseModel):
-    action: str = "generate" # "generate" (t23d) or "image23d" (i23d)
+    action: str = "generate"  # "generate" (t23d) or "image23d" (i23d)
     prompt: Optional[str] = None
-    input_image: Optional[str] = None # base64
+    input_image: Optional[str] = None  # base64
     model: str = "trellis-2"
     quality: str = "1024"
     seed: Optional[int] = None
     textured: bool = True
+    pbr: bool = True
+    decimation_target: Optional[int] = None
+    texture_size: Optional[int] = None
+    remesh: Optional[bool] = None
+    max_num_view: Optional[int] = None
+    texture_resolution: Optional[int] = None
+    steps: Optional[int] = None
+    extra_params: Optional[Dict[str, Any]] = None
+
+
+class ThreeDTextureRequest(BaseModel):
+    mesh_base64: str
+    input_image: Optional[str] = None
+    model: str = "hunyuan3d"
+    max_num_view: int = 6
+    texture_resolution: int = 512
+    seed: Optional[int] = None
 
 class ThreeDAssetResponse(BaseModel):
     id: str
@@ -71,7 +100,7 @@ def _worker_log_path(model: str) -> Path:
 def _prepare_worker(model: str, worker_dir: Path) -> None:
     """Bring an installed worker up to date before it starts.
 
-    Installs made by earlier versions can carry a stale run_server.py or (Trellis) source
+    Installs made by earlier versions can carry a stale run_server.py or (Trellis v1) source
     patches that do not parse.  Refreshing them here means a fix to the Suite reaches
     existing installs without a reinstall.  Never raises: a problem here is logged and
     the worker is started anyway so its own error shows up in the health check.
@@ -80,6 +109,10 @@ def _prepare_worker(model: str, worker_dir: Path) -> None:
         templates = Path(__file__).parent / "templates"
         if model == "triposr":
             wanted = (templates / "triposr_server.py").read_text(encoding="utf-8")
+        elif model == "hunyuan3d":
+            wanted = (templates / "hunyuan3d_server.py").read_text(encoding="utf-8")
+        elif model == "trellis-2":
+            wanted = (templates / "trellis2_server.py").read_text(encoding="utf-8")
         else:
             wanted = ((templates / "tsr_server_template.py").read_text(encoding="utf-8")
                       .replace("{MODEL_NAME}", model.title()).replace("{MODEL_ID}", model))
@@ -90,11 +123,13 @@ def _prepare_worker(model: str, worker_dir: Path) -> None:
             logger.info(f"[3D] Updated {model} run_server.py to the current template")
 
         if model == "trellis-2":
-            from . import trellis_patches  # noqa: PLC0415
             repo_dir = worker_dir / model
-            if repo_dir.exists() and not trellis_patches.is_patched(repo_dir):
-                for line in trellis_patches.apply_sdpa_patches(repo_dir):
-                    logger.info(f"[3D] Trellis source patch: {line}")
+            # Only apply legacy TRELLIS v1 SDPA patches when repo is v1 (has trellis/ and no trellis2/)
+            if (repo_dir / "trellis").exists() and not (repo_dir / "trellis2").exists():
+                from . import trellis_patches  # noqa: PLC0415
+                if not trellis_patches.is_patched(repo_dir):
+                    for line in trellis_patches.apply_sdpa_patches(repo_dir):
+                        logger.info(f"[3D] Trellis source patch: {line}")
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"[3D] Could not prepare {model} worker: {exc}")
 
@@ -107,6 +142,25 @@ def _stop_worker_process(model: str) -> None:
             proc.terminate()
         except OSError:
             pass
+
+
+def _evict_other_heavy_workers(target_model: str) -> list[str]:
+    """Stop any other running heavy 3D worker so 24 GB VRAM is free for *target_model*."""
+    stopped: list[str] = []
+    if target_model not in _HEAVY_3D_MODELS:
+        return stopped
+    for other in list(_WORKER_PROCESS):
+        if other != target_model and other in _HEAVY_3D_MODELS:
+            proc = _WORKER_PROCESS.get(other)
+            if proc and proc.poll() is None:
+                logger.info(f"[3D] Evicting heavy worker '{other}' before starting '{target_model}' to free VRAM")
+                _stop_worker_process(other)
+                stopped.append(other)
+            else:
+                _stop_worker_process(other)
+    if stopped:
+        time.sleep(1.0)
+    return stopped
 
 
 def _start_worker_process(model: str):
@@ -197,41 +251,48 @@ async def get_or_start_worker(model: str, wait_seconds: int = 600):
 
 @router.post("/generate", response_model=ThreeDGenerationResponse)
 async def generate_3d_asset(req: ThreeDGenerationRequest):
-    """
-    Generate a 3D asset using the specified model.
-    """
+    """Generate a 3D asset using the specified model (GPU-serialized across parallel branches)."""
     trace_id = f"3d-{uuid.uuid4().hex[:8]}"
     logger.info(f"[{trace_id}] 3D generation request: {req.model} ({req.action})")
 
-    try:
-        # 1. Prepare Workspace & Worker
-        workspace = get_workspace_manager()
-        
-        if not req.input_image:
-            return ThreeDGenerationResponse(
-                success=False,
-                error=f"{req.model} builds a 3D model from a picture: connect a reference image "
-                      "(an Image node or an image generation step). A text prompt alone is not enough.")
+    if not req.input_image:
+        return ThreeDGenerationResponse(
+            success=False,
+            error=f"{req.model} builds a 3D model from a picture: connect a reference image "
+                  "(an Image node or an image generation step). A text prompt alone is not enough.")
 
-        # Start/Get worker
+    await asyncio.to_thread(_GPU_3D_LOCK.acquire)
+    try:
+        workspace = get_workspace_manager()
+        await asyncio.to_thread(_evict_other_heavy_workers, req.model)
+
         port, err = await get_or_start_worker(req.model)
         if err:
             return ThreeDGenerationResponse(success=False, error=f"Worker Error: {err}")
 
-        # 2. Call Worker for Generation
         logger.info(f"[{trace_id}] Routing request to worker on port {port}")
-        
+        payload: Dict[str, Any] = {
+            "image_base64": req.input_image.split(",", 1)[1] if req.input_image.startswith("data:") else req.input_image,
+            "prompt": req.prompt,
+            "seed": req.seed if req.seed is not None else 42,
+            "action": req.action,
+            "quality": req.quality,
+            "resolution": req.quality,
+            "textured": req.textured,
+            "pbr": req.pbr,
+        }
+        for k in ("decimation_target", "texture_size", "remesh", "max_num_view", "texture_resolution", "steps"):
+            v = getattr(req, k, None)
+            if v is not None:
+                payload[k] = v
+        if isinstance(req.extra_params, dict):
+            for k, v in req.extra_params.items():
+                if v is not None and k not in ("image_base64",):
+                    payload[k] = v
+
         async with httpx.AsyncClient(timeout=900.0) as client:
-            worker_res = await client.post(
-                f"http://127.0.0.1:{port}/generate",
-                json={
-                    "image_base64": req.input_image.split(",", 1)[1] if req.input_image.startswith("data:") else req.input_image,
-                    "prompt": req.prompt,
-                    "seed": req.seed or 1,
-                    "action": req.action
-                }
-            )
-            
+            worker_res = await client.post(f"http://127.0.0.1:{port}/generate", json=payload)
+
             if worker_res.status_code != 200:
                 try:
                     detail = worker_res.json().get("detail", "")
@@ -248,61 +309,93 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
             if not result_data.get("glb_base64"):
                 return ThreeDGenerationResponse(success=False, error=f"{req.model} returned no mesh")
 
-        # 3. Save Logic: Nested structure (YYYY-MM/trace_id/...)
         now = datetime.now()
-        month_dir = now.strftime("%Y-%m")
-        # We'll use a standard filename inside the folder to keep it clean
-        base_subpath = f"{month_dir}/{trace_id}"
-        
-        # Ensure the subdirectories exist within ThreeD domain
-        threed_root = workspace.workspace_root / "ThreeD"
-        gen_dir = threed_root / base_subpath
-        gen_dir.mkdir(parents=True, exist_ok=True)
+        base_subpath = f"{now.strftime('%Y-%m')}/{trace_id}"
+        (workspace.workspace_root / "ThreeD" / base_subpath).mkdir(parents=True, exist_ok=True)
 
-        # Save Real GLB
         glb_bytes = base64.b64decode(result_data["glb_base64"])
-        glb_filename = f"{req.model}.glb"
-        glb_subpath = f"{base_subpath}/{glb_filename}"
-        
-        # If the user provided an image, save it too
-        if req.input_image:
-            try:
-                 img_data = req.input_image
-                 if "," in img_data:
-                     img_data = img_data.split(",", 1)[1]
-                 img_bytes = base64.b64decode(img_data)
-                 # Save as reference.png in the same folder
-                 workspace.save_output(domain="ThreeD", filename=f"{base_subpath}/reference.png", content=img_bytes, trace_id=trace_id)
-            except Exception as e:
-                logger.warning(f"Failed to save reference image: {e}")
+        glb_subpath = f"{base_subpath}/{req.model}.glb"
 
-        # Save the REAL GLB
-        path = workspace.save_output(
-            domain="ThreeD",
-            filename=glb_subpath,
-            content=glb_bytes,
-            trace_id=trace_id
-        )
-        
-        stat = path.stat()
+        try:
+            img_data = req.input_image.split(",", 1)[1] if "," in req.input_image else req.input_image
+            workspace.save_output(domain="ThreeD", filename=f"{base_subpath}/reference.png",
+                                  content=base64.b64decode(img_data), trace_id=trace_id)
+        except Exception as e:
+            logger.warning(f"Failed to save reference image: {e}")
+
+        path = workspace.save_output(domain="ThreeD", filename=glb_subpath, content=glb_bytes, trace_id=trace_id)
         asset = ThreeDAssetResponse(
             id=trace_id,
             name=req.prompt if req.prompt else f"3D {req.model}",
             url=f"/api/3d/serve/{glb_subpath}",
             path=str(path),
             model=req.model,
-            size_bytes=stat.st_size,
-            created_at=now.isoformat()
+            size_bytes=path.stat().st_size,
+            created_at=now.isoformat(),
         )
-
-        return ThreeDGenerationResponse(
-            success=True,
-            asset=asset
-        )
+        return ThreeDGenerationResponse(success=True, asset=asset)
 
     except Exception as e:
         logger.error(f"[{trace_id}] 3D generation failed: {str(e)}")
         return ThreeDGenerationResponse(success=False, error=str(e))
+    finally:
+        _GPU_3D_LOCK.release()
+
+
+@router.post("/texture", response_model=ThreeDGenerationResponse)
+async def texture_3d_asset(req: ThreeDTextureRequest):
+    """Apply PBR textures to an existing GLB mesh using a supported worker (e.g. hunyuan3d)."""
+    trace_id = f"3dtex-{uuid.uuid4().hex[:8]}"
+    logger.info(f"[{trace_id}] 3D texture request: {req.model}")
+
+    if not req.mesh_base64:
+        return ThreeDGenerationResponse(success=False, error="mesh_base64 is required for texturing.")
+
+    await asyncio.to_thread(_GPU_3D_LOCK.acquire)
+    try:
+        workspace = get_workspace_manager()
+        await asyncio.to_thread(_evict_other_heavy_workers, req.model)
+
+        port, err = await get_or_start_worker(req.model)
+        if err:
+            return ThreeDGenerationResponse(success=False, error=f"Worker Error: {err}")
+
+        payload = {
+            "mesh_base64": req.mesh_base64.split(",", 1)[1] if req.mesh_base64.startswith("data:") else req.mesh_base64,
+            "image_base64": (req.input_image.split(",", 1)[1] if req.input_image and req.input_image.startswith("data:") else req.input_image),
+            "max_num_view": req.max_num_view,
+            "texture_resolution": req.texture_resolution,
+            "seed": req.seed if req.seed is not None else 42,
+        }
+        async with httpx.AsyncClient(timeout=900.0) as client:
+            worker_res = await client.post(f"http://127.0.0.1:{port}/texture", json=payload)
+            if worker_res.status_code != 200:
+                return ThreeDGenerationResponse(success=False, error=f"{req.model} /texture HTTP {worker_res.status_code}: {worker_res.text[:300]}")
+            result_data = worker_res.json()
+            if not result_data.get("success") or not result_data.get("glb_base64"):
+                return ThreeDGenerationResponse(success=False, error=_short_error(result_data.get("error", "No textured mesh returned")))
+
+        now = datetime.now()
+        base_subpath = f"{now.strftime('%Y-%m')}/{trace_id}"
+        (workspace.workspace_root / "ThreeD" / base_subpath).mkdir(parents=True, exist_ok=True)
+        glb_subpath = f"{base_subpath}/{req.model}_textured.glb"
+        path = workspace.save_output(domain="ThreeD", filename=glb_subpath,
+                                     content=base64.b64decode(result_data["glb_base64"]), trace_id=trace_id)
+        asset = ThreeDAssetResponse(
+            id=trace_id,
+            name=f"Textured {req.model}",
+            url=f"/api/3d/serve/{glb_subpath}",
+            path=str(path),
+            model=req.model,
+            size_bytes=path.stat().st_size,
+            created_at=now.isoformat(),
+        )
+        return ThreeDGenerationResponse(success=True, asset=asset)
+    except Exception as e:
+        logger.error(f"[{trace_id}] 3D texture failed: {e}")
+        return ThreeDGenerationResponse(success=False, error=str(e))
+    finally:
+        _GPU_3D_LOCK.release()
 
 @router.get("/history")
 async def get_3d_history(page: int = 1, limit: int = 10):
@@ -379,41 +472,35 @@ async def serve_3d_asset(filename: str):
 
 @router.get("/status")
 async def get_3d_engine_status():
-    """Check if 3D generation engines are online."""
-    # Logic to check for local CUDA instances or sub-processes
+    """Check if 3D generation engines are configured."""
     return {
         "status": "online",
         "engines": {
             "trellis-2": "ready",
+            "hunyuan3d": "ready",
             "triposr": "ready",
-            "crm": "ready"
         },
-        "vram_available": "24GB" # Simulated
+        "vram_available": "24GB",
     }
 
-from core.utils.paths import LOCAL_MODELS_3D, LOGS_SYSTEM
 
-# Installation Logic Simulation
-# For actual implementation, this would check if a specific directory exists
-# e.g., checkpoints/3d/trellis and return True/False
 @router.get("/active_services")
 async def get_active_services():
     """Get a list of all currently running heavy models with their live stats."""
     services = []
-    
+
     for model_id, proc in _WORKER_PROCESS.items():
         if proc.poll() is None:
-            # Service is alive, get its live health/vram
             status = await get_worker_health(model_id)
             services.append({
                 "id": model_id,
-                "name": "Trellis 2 (WIP)" if model_id == "trellis-2" else "TripoSR" if model_id == "triposr" else model_id.title(),
+                "name": _MODEL_DISPLAY_NAMES.get(model_id, model_id.title()),
                 "status": status.get("status", "starting"),
                 "vram_used": status.get("vram_used", 0),
                 "vram_total": status.get("vram_total", 0),
-                "port": _WORKER_PORT.get(model_id)
+                "port": _WORKER_PORT.get(model_id),
             })
-            
+
     return services
 
 @router.post("/stop/{model}")
@@ -497,54 +584,68 @@ async def get_install_status(model: str):
     wrapper_dir = LOCAL_MODELS_3D / wrapper_name
     install_file = wrapper_dir / ".install_complete"
     weights_file = wrapper_dir / ".install_weights_complete"
-    
-    # Simple folder-based check (fast, no flickering)
-    is_valid = (wrapper_dir / "venv").exists()
-    
+    weights_repo_file = wrapper_dir / ".weights_repo"
+
+    installed = install_file.exists() and (wrapper_dir / "venv").exists()
+    weights_repo = None
+    if weights_repo_file.exists():
+        try:
+            weights_repo = weights_repo_file.read_text(encoding="utf-8").strip() or None
+        except OSError:
+            pass
+
+    needs_upgrade = bool(
+        model == "trellis-2"
+        and installed
+        and not (wrapper_dir / "trellis-2" / "trellis2").exists()
+    )
+
     return {
         "model": model,
-        "installed": install_file.exists() and is_valid,
-        "weights_installed": weights_file.exists()
+        "installed": installed,
+        "weights_installed": weights_file.exists(),
+        "weights_repo": weights_repo,
+        "needs_upgrade": needs_upgrade,
     }
+
 
 @router.post("/install_weights/{model}")
 async def install_weights(model: str):
     """Start streaming download of 3D model weights from HuggingFace."""
     from fastapi.responses import StreamingResponse
-    import asyncio
     import json
-    from core.utils.paths import LOCAL_MODELS_3D
-    
+
     wrapper_name = model.replace("-", "")
     wrapper_dir = LOCAL_MODELS_3D / wrapper_name
     weights_dir = wrapper_dir / "weights"
     weights_complete_file = wrapper_dir / ".install_weights_complete"
-    
+    weights_repo_file = wrapper_dir / ".weights_repo"
+
     weights_dir.mkdir(parents=True, exist_ok=True)
-    
+
     async def _generate():
         try:
             yield f"data: {json.dumps({'line': f'Initializing weight download for {model} to {weights_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
-            
-            # to keep the main event loop clean.
-            if "trellis" in model:
-                repo_id = "microsoft/TRELLIS-image-large"
+
+            if model in ("trellis-2", "trellis"):
+                repo_id = "microsoft/TRELLIS.2-4B"
+            elif model == "hunyuan3d":
+                repo_id = "tencent/Hunyuan3D-2.1"
             elif model == "triposr":
                 repo_id = "stabilityai/TripoSR"
             else:
                 repo_id = "unknown"
-            
+
             if repo_id == "unknown":
                 yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Unknown model repository for weights'})}\n\n"
                 return
 
             yield f"data: {json.dumps({'line': f'Downloading from HF Repo: {repo_id}...'})}\n\n"
-            
-            # We'll use huggingface_hub cli if possible, or a python script
+
             download_script = f"""
 import os
 from huggingface_hub import snapshot_download
-print(f'Starting download of {repo_id}...')
+print('Starting download of {repo_id}...')
 snapshot_download(
     repo_id='{repo_id}',
     local_dir=r'{weights_dir}',
@@ -553,38 +654,38 @@ snapshot_download(
 print('Download complete.')
 """
             temp_script = wrapper_dir / "tmp_download.py"
-            temp_script.write_text(download_script, encoding='utf-8')
-            
-            # Use the venv python if possible, or system python
-            venv_python = wrapper_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else wrapper_dir / "venv" / "bin" / "python"
+            temp_script.write_text(download_script, encoding="utf-8")
+
+            venv_python = wrapper_dir / "venv" / "Scripts" / "python.exe" if os.name == "nt" else wrapper_dir / "venv" / "bin" / "python"
             if not venv_python.exists():
-                venv_python = "python" # fallback
-                
+                venv_python = "python"
+
             proc = await asyncio.create_subprocess_exec(
                 str(venv_python), str(temp_script),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 env={**os.environ, "HF_HUB_DISABLE_SYMLINKS": "1", "HF_HUB_ENABLE_HF_TRANSFER": "1"},
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
-            
+
             async for raw in proc.stdout:
                 line = raw.decode("utf-8", errors="replace").rstrip()
                 if line:
-                    # Handle carriage returns by splitting/replacing to ensure vertical stacking
-                    cleanLine = line.replace('\r', '\n');
+                    cleanLine = line.replace("\r", "\n")
                     yield f"data: {json.dumps({'line': cleanLine})}\n\n"
-                
+
             await proc.wait()
-            
-            if temp_script.exists(): os.remove(temp_script)
-            
+
+            if temp_script.exists():
+                os.remove(temp_script)
+
             if proc.returncode == 0:
-                weights_complete_file.write_text(f"Downloaded {datetime.now().isoformat()}", encoding='utf-8')
+                weights_complete_file.write_text(f"Downloaded {datetime.now().isoformat()}", encoding="utf-8")
+                weights_repo_file.write_text(repo_id, encoding="utf-8")
                 yield f"data: {json.dumps({'line': 'Weight installation verified and complete.', 'done': True, 'success': True})}\n\n"
             else:
                 yield f"data: {json.dumps({'done': True, 'success': False, 'error': f'Download process failed with exit code {proc.returncode}'})}\n\n"
-                
+
         except Exception as e:
             logger.error(f"Weight download failed: {e}")
             yield f"data: {json.dumps({'done': True, 'success': False, 'error': str(e)})}\n\n"
@@ -595,65 +696,116 @@ print('Download complete.')
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+def _msvc_build_env() -> tuple[dict, str]:
+    """Build an environment dict populated with MSVC x64 toolchain + CUDA arch list on Windows."""
+    env = dict(os.environ)
+    env["TORCH_CUDA_ARCH_LIST"] = "8.0;8.6;8.9+PTX"
+    note = ""
+    try:
+        vswhere_path = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+        if os.path.exists(vswhere_path):
+            vs_install = subprocess.check_output(
+                [vswhere_path, "-latest", "-property", "installationPath"],
+                text=True, errors="replace",
+            ).strip()
+            vcvarsall = os.path.join(vs_install, "VC", "Auxiliary", "Build", "vcvarsall.bat")
+            if os.path.exists(vcvarsall):
+                env_out = subprocess.run(
+                    f'cmd /c "call "{vcvarsall}" x64 && set"',
+                    shell=True, capture_output=True, text=True, errors="replace",
+                )
+                for ln in env_out.stdout.splitlines():
+                    if "=" in ln:
+                        k, v = ln.split("=", 1)
+                        env[k] = v
+                note = "MSVC environment configured."
+    except Exception as exc:
+        note = f"Warning: MSVC setup failed: {exc}"
+    return env, note
+
+
+def _relax_torch_cuda_check(venv_dir: Path) -> bool:
+    """Relax PyTorch's strict host-CUDA vs torch-CUDA version error so extensions build."""
+    cpp_ext = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
+    if not cpp_ext.exists():
+        return False
+    try:
+        src = cpp_ext.read_text(encoding="utf-8")
+        patched = src.replace(
+            "raise RuntimeError(CUDA_MISMATCH_MESSAGE.format(cuda_str_version, torch.version.cuda))",
+            "warnings.warn(f'[Aethvion] CUDA version mismatch ({cuda_str_version} vs {torch.version.cuda}) — proceeding.')",
+        )
+        if patched != src:
+            cpp_ext.write_text(patched, encoding="utf-8")
+            return True
+    except Exception:
+        pass
+    return False
+
+
 @router.post("/install/{model}")
 async def install_3d_model(model: str):
-    """Start actual streaming installation of a 3D model/engine (Trellis)."""
+    """Start streaming installation of a 3D model/engine (trellis-2, hunyuan3d, triposr)."""
     from fastapi.responses import StreamingResponse
-    import asyncio
-    from core.utils.paths import LOCAL_MODELS_3D
     import sys
     import json
-    import subprocess
-    import shutil
-    # Define robust microservice structure for the model
-    # ex: localmodels/3d/trellis2
+
     wrapper_name = model.replace("-", "")
     wrapper_dir = LOCAL_MODELS_3D / wrapper_name
-    
+
     install_file = wrapper_dir / ".install_complete"
-    repo_dir = wrapper_dir / model         # localmodels/3d/trellis2/trellis-2
-    venv_dir = wrapper_dir / "venv"          # localmodels/3d/trellis2/venv
-    run_script = wrapper_dir / "run_server.py" # localmodels/3d/trellis2/run_server.py
-    
+    repo_dir = wrapper_dir / model
+    venv_dir = wrapper_dir / "venv"
+    run_script = wrapper_dir / "run_server.py"
+
     wrapper_dir.mkdir(parents=True, exist_ok=True)
-    
+
+    def _sse(line: str) -> str:
+        return f"data: {json.dumps({'line': line})}\n\n"
+
+    async def _run_and_stream(cmd: list[str], *, env=None, cwd=None, out_rc: list[int] | None = None):
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            env=env,
+            cwd=str(cwd) if cwd else None,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        async for raw in proc.stdout:
+            line = raw.decode("utf-8", errors="replace").rstrip()
+            if line:
+                yield _sse(line)
+        rc = await proc.wait()
+        if out_rc is not None:
+            out_rc.append(rc)
+
     async def _generate():
         try:
             # 1. Clean previous attempts
             if wrapper_dir.exists() and not install_file.exists():
-                yield f"data: {json.dumps({'line': 'Cleaning partial installation...'})}\n\n"
-                try:
-                    subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
-                except (subprocess.SubprocessError, OSError): pass
+                yield _sse("Cleaning partial installation...")
+                if repo_dir.exists():
+                    await asyncio.to_thread(shutil.rmtree, repo_dir, True)
                 wrapper_dir.mkdir(parents=True, exist_ok=True)
 
-            # Ensure repo_dir is clean
             if repo_dir.exists():
-                try: subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
-                except (subprocess.SubprocessError, OSError): pass
-                
+                await asyncio.to_thread(shutil.rmtree, repo_dir, True)
+
             # 2. Setup Virtual Environment
-            yield f"data: {json.dumps({'line': f'Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
-            proc_venv = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "venv", str(venv_dir),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            )
-            async for raw in proc_venv.stdout:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\n\n"
-            await proc_venv.wait()
-            
-            if proc_venv.returncode != 0:
+            yield _sse(f"Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...")
+            rc_box: list[int] = []
+            async for chunk in _run_and_stream([sys.executable, "-m", "venv", str(venv_dir)], out_rc=rc_box):
+                yield chunk
+            if not rc_box or rc_box[0] != 0:
                 yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Venv creation failed'})}\n\n"
                 return
 
-            pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
+            pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == "win32" else venv_dir / "bin" / "pip"
+            py_exe = venv_dir / "Scripts" / "python.exe" if sys.platform == "win32" else venv_dir / "bin" / "python"
 
-            # TripoSR install path — fast, ~6 GB VRAM, fully public weights
+            # TripoSR install path — fast, ~6 GB VRAM
             if model == "triposr":
-                # 1. Core deps
                 triposr_reqs = [
                     "torch==2.6.0", "torchvision==0.21.0", "torchaudio==2.6.0",
                     "wheel", "fastapi", "uvicorn", "httpx",
@@ -663,325 +815,207 @@ async def install_3d_model(model: str):
                     "imageio[ffmpeg]", "xatlas==0.0.9", "moderngl==5.10.0",
                     "scipy", "numpy<2.0", "scikit-image",
                 ]
-                yield f"data: {json.dumps({'line': 'Installing TripoSR dependencies (torch 2.6 cu124, numpy < 2.0, scikit-image)...'})}\n\n"
-                proc_tr = await asyncio.create_subprocess_exec(
+                yield _sse("Installing TripoSR dependencies (torch 2.6 cu124, numpy < 2.0, scikit-image)...")
+                async for chunk in _run_and_stream([
                     str(pip_exe), "install", *triposr_reqs,
                     "--index-url", "https://download.pytorch.org/whl/cu124",
                     "--extra-index-url", "https://pypi.org/simple",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                )
-                async for raw in proc_tr.stdout:
-                    line = raw.decode("utf-8", errors="replace").rstrip()
-                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
-                await proc_tr.wait()
+                ]):
+                    yield chunk
 
-                # 2. torchmcubes — CUDA marching-cubes extension (must build from source)
-                yield f"data: {json.dumps({'line': 'Building torchmcubes (marching cubes CUDA ext) — needs MSVC, may take 3-5 min...'})}\n\n"
-                mc_env = dict(os.environ)
-                mc_env['TORCH_CUDA_ARCH_LIST'] = '8.0;8.6;8.9+PTX'
-                try:
-                    vswhere_path = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
-                    if os.path.exists(vswhere_path):
-                        vs_install = subprocess.check_output(
-                            [vswhere_path, "-latest", "-property", "installationPath"],
-                            text=True, errors='replace'
-                        ).strip()
-                        vcvarsall = os.path.join(vs_install, "VC", "Auxiliary", "Build", "vcvarsall.bat")
-                        if os.path.exists(vcvarsall):
-                            env_out = subprocess.run(
-                                f'cmd /c "call "{vcvarsall}" x64 && set"',
-                                shell=True, capture_output=True, text=True, errors='replace'
-                            )
-                            for ln in env_out.stdout.splitlines():
-                                if '=' in ln:
-                                    k, v = ln.split('=', 1)
-                                    mc_env[k] = v
-                            yield f"data: {json.dumps({'line': 'MSVC environment configured for torchmcubes build.'})}\n\n"
-                except Exception as _msvc_err:
-                    yield f"data: {json.dumps({'line': f'Warning: MSVC setup failed: {_msvc_err}'})}\n\n"
+                yield _sse("Building torchmcubes (marching cubes CUDA ext) — needs MSVC, may take 3-5 min...")
+                mc_env, mc_note = await asyncio.to_thread(_msvc_build_env)
+                if mc_note:
+                    yield _sse(mc_note)
+                if _relax_torch_cuda_check(venv_dir):
+                    yield _sse("PyTorch CUDA version check relaxed for cross-version build.")
 
-                _cpp_ext_tsr = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
-                if _cpp_ext_tsr.exists():
-                    try:
-                        _ce_src = _cpp_ext_tsr.read_text(encoding='utf-8')
-                        _ce_patched = _ce_src.replace(
-                            "raise RuntimeError(CUDA_MISMATCH_MESSAGE.format(cuda_str_version, torch.version.cuda))",
-                            "warnings.warn(f'[Aethvion] CUDA version mismatch ({cuda_str_version} vs {torch.version.cuda}) — proceeding.')"
-                        )
-                        if _ce_patched != _ce_src:
-                            _cpp_ext_tsr.write_text(_ce_patched, encoding='utf-8')
-                            yield f"data: {json.dumps({'line': 'PyTorch CUDA version check relaxed for cross-version build.'})}\n\n"
-                    except Exception:
-                        pass
-
-                proc_mc = await asyncio.create_subprocess_exec(
-                    str(pip_exe), "install", "--no-build-isolation",
-                    "git+https://github.com/tatsy/torchmcubes.git",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    env=mc_env,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                )
-                async for raw in proc_mc.stdout:
-                    line = raw.decode("utf-8", errors="replace").rstrip()
-                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
-                await proc_mc.wait()
-                if proc_mc.returncode != 0:
-                    yield f"data: {json.dumps({'line': 'Note: torchmcubes could not be built (needs MSVC + CUDA toolkit). TripoSR will use the built-in CPU marching-cubes fallback instead.'})}\n\n"
+                mc_rc: list[int] = []
+                async for chunk in _run_and_stream(
+                    [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/tatsy/torchmcubes.git"],
+                    env=mc_env, out_rc=mc_rc,
+                ):
+                    yield chunk
+                if not mc_rc or mc_rc[0] != 0:
+                    yield _sse("Note: torchmcubes could not be built. TripoSR will use the CPU marching-cubes fallback instead.")
                 else:
-                    yield f"data: {json.dumps({'line': 'torchmcubes installed successfully.'})}\n\n"
+                    yield _sse("torchmcubes installed successfully.")
 
-                # 3. Clone TripoSR repo (no setup.py — add to sys.path at runtime)
-                yield f"data: {json.dumps({'line': 'Cloning VAST-AI-Research/TripoSR repository...'})}\n\n"
-                if repo_dir.exists():
-                    shutil.rmtree(repo_dir, ignore_errors=True)
-                proc_git_tsr = await asyncio.create_subprocess_exec(
-                    "git", "clone", "https://github.com/VAST-AI-Research/TripoSR.git", str(repo_dir),
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                )
-                async for raw in proc_git_tsr.stdout:
-                    line = raw.decode("utf-8", errors="replace").rstrip()
-                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
-                await proc_git_tsr.wait()
-                if proc_git_tsr.returncode != 0:
+                yield _sse("Cloning VAST-AI-Research/TripoSR repository...")
+                tsr_rc: list[int] = []
+                async for chunk in _run_and_stream(
+                    ["git", "clone", "https://github.com/VAST-AI-Research/TripoSR.git", str(repo_dir)],
+                    out_rc=tsr_rc,
+                ):
+                    yield chunk
+                if not tsr_rc or tsr_rc[0] != 0:
                     yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TripoSR git clone failed'})}\n\n"
                     return
 
-                # 4. Write run_server.py
-                yield f"data: {json.dumps({'line': 'Generating TripoSR FastAPI microservice hook (run_server.py)...'})}\n\n"
-                triposr_server = (Path(__file__).parent / 'templates' / 'triposr_server.py').read_text(encoding='utf-8')
-                run_script.write_text(triposr_server, encoding="utf-8")
-
-                # 5. Lockfile
-                yield f"data: {json.dumps({'line': 'Finalizing TripoSR installation...'})}\n\n"
+                yield _sse("Generating TripoSR FastAPI microservice hook (run_server.py)...")
+                run_script.write_text((Path(__file__).parent / "templates" / "triposr_server.py").read_text(encoding="utf-8"), encoding="utf-8")
                 install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding="utf-8")
                 yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
                 return
-            # end triposr branch — fall through to trellis-2 install
+            # Hunyuan3D 2.1 install path — shape + multi-view PBR paint pipeline
+            if model == "hunyuan3d":
+                yield _sse(f"Cloning Tencent-Hunyuan/Hunyuan3D-2.1 into {repo_dir.relative_to(LOCAL_MODELS_3D)}...")
+                hy_rc: list[int] = []
+                async for chunk in _run_and_stream(
+                    ["git", "clone", "https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1.git", str(repo_dir)],
+                    out_rc=hy_rc,
+                ):
+                    yield chunk
+                if not hy_rc or hy_rc[0] != 0:
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Hunyuan3D git clone failed'})}\n\n"
+                    return
 
-            # 3. Clone the repository
-            if repo_dir.exists() and (repo_dir / ".git").exists():
-                yield f"data: {json.dumps({'line': 'Existing engine found. Syncing repository...'})}\n\n"
-                proc_git = await asyncio.create_subprocess_exec(
-                    "git", "pull",
-                    cwd=str(repo_dir),
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-                )
-            else:
-                if repo_dir.exists(): shutil.rmtree(repo_dir, ignore_errors=True)
-                yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
-                proc_git = await asyncio.create_subprocess_exec(
-                    "git", "clone", "--recurse-submodules", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-                )
-            
-            async for raw in proc_git.stdout:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\n\n"
-            await proc_git.wait()
-            
-            if proc_git.returncode != 0:
-                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Git clone failed'})}\n\n"
+                yield _sse("Installing PyTorch 2.5.1 CUDA 12.4 + core dependencies...")
+                hy_reqs = [
+                    "torch==2.5.1", "torchvision==0.20.1", "torchaudio==2.5.1",
+                    "wheel", "ninja", "fastapi", "uvicorn", "httpx",
+                    "huggingface_hub[cli]", "hf_transfer", "trimesh", "rembg",
+                    "onnxruntime-gpu", "psutil",
+                ]
+                async for chunk in _run_and_stream([
+                    str(pip_exe), "install", *hy_reqs,
+                    "--index-url", "https://download.pytorch.org/whl/cu124",
+                    "--extra-index-url", "https://pypi.org/simple",
+                ]):
+                    yield chunk
+
+                req_txt = repo_dir / "requirements.txt"
+                if req_txt.exists():
+                    yield _sse("Installing Hunyuan3D-2.1 requirements.txt dependencies...")
+                    async for chunk in _run_and_stream([str(pip_exe), "install", "-r", str(req_txt)]):
+                        yield chunk
+
+                yield _sse("Configuring MSVC toolchain for Hunyuan3D PBR paint extensions...")
+                hy_env, hy_note = await asyncio.to_thread(_msvc_build_env)
+                if hy_note:
+                    yield _sse(hy_note)
+                if _relax_torch_cuda_check(venv_dir):
+                    yield _sse("PyTorch CUDA version check relaxed for cross-version build.")
+
+                for ext_rel, label in (
+                    ("hy3dpaint/custom_rasterizer", "custom_rasterizer"),
+                    ("hy3dpaint/DifferentiableRenderer", "DifferentiableRenderer"),
+                ):
+                    ext_dir = repo_dir / ext_rel
+                    if ext_dir.exists():
+                        yield _sse(f"Building {label} CUDA/C++ extension...")
+                        ext_rc: list[int] = []
+                        async for chunk in _run_and_stream(
+                            [str(pip_exe), "install", "--no-build-isolation", "-e", "."],
+                            env=hy_env, cwd=ext_dir, out_rc=ext_rc,
+                        ):
+                            yield chunk
+                        if not ext_rc or ext_rc[0] != 0:
+                            yield _sse(f"Warning: {label} build failed — PBR painting will be unavailable (shape generation still works).")
+                        else:
+                            yield _sse(f"{label} installed successfully.")
+
+                ckpt_dir = repo_dir / "hy3dpaint" / "ckpt"
+                ckpt_dir.mkdir(parents=True, exist_ok=True)
+                realesrgan_dest = ckpt_dir / "RealESRGAN_x4plus.pth"
+                if not realesrgan_dest.exists():
+                    yield _sse("Downloading RealESRGAN_x4plus.pth upscaler checkpoint...")
+                    dl_code = (
+                        "import urllib.request; "
+                        f"urllib.request.urlretrieve('https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth', r'{realesrgan_dest}')"
+                    )
+                    dl_rc: list[int] = []
+                    async for chunk in _run_and_stream([str(py_exe), "-c", dl_code], out_rc=dl_rc):
+                        yield chunk
+                    if not dl_rc or dl_rc[0] != 0:
+                        yield _sse("Warning: RealESRGAN_x4plus.pth download failed — PBR texture upscaling may retry at runtime.")
+
+                yield _sse("Generating Hunyuan3D 2.1 FastAPI microservice hook (run_server.py)...")
+                run_script.write_text((Path(__file__).parent / "templates" / "hunyuan3d_server.py").read_text(encoding="utf-8"), encoding="utf-8")
+                install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding="utf-8")
+                yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
                 return
-                
-            # 4. Install Dependencies into the isolated venv
-            yield f"data: {json.dumps({'line': 'Installing core scientific stack (torch, rembg, etc.)...'})}\n\n"
-            
-            pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
-            
+
+            # Upgraded TRELLIS.2-4B install path
+            if repo_dir.exists() and (repo_dir / ".git").exists():
+                yield _sse("Existing TRELLIS.2 repository found. Syncing...")
+                git_rc: list[int] = []
+                async for chunk in _run_and_stream(["git", "pull"], cwd=repo_dir, out_rc=git_rc):
+                    yield chunk
+            else:
+                if repo_dir.exists():
+                    await asyncio.to_thread(shutil.rmtree, repo_dir, True)
+                yield _sse(f"Cloning microsoft/TRELLIS.2 (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...")
+                git_rc = []
+                async for chunk in _run_and_stream(
+                    ["git", "clone", "--recurse-submodules", "https://github.com/microsoft/TRELLIS.2.git", str(repo_dir)],
+                    out_rc=git_rc,
+                ):
+                    yield chunk
+
+            if not git_rc or git_rc[0] != 0:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TRELLIS.2 git clone failed'})}\n\n"
+                return
+
+            yield _sse("Installing TRELLIS.2 high-performance CUDA 12.4 core stack...")
             core_reqs = [
                 "torch==2.6.0", "torchvision==0.21.0", "torchaudio==2.6.0",
-                "wheel", "ninja",
-                "easydict", "scipy", "tqdm",
+                "wheel", "ninja", "easydict", "scipy", "tqdm",
                 "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow",
                 "imageio", "imageio-ffmpeg", "opencv-python-headless", "rembg", "onnxruntime-gpu",
-                "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers",
-                "spconv-cu124",
+                "trimesh", "transformers", "timm", "einops", "kornia", "psutil", "plyfile",
+                "xatlas", "pymeshfix", "igraph", "spconv-cu124",
             ]
-            
-            yield f"data: {json.dumps({'line': 'Installing high-performance CUDA 12.4 core (This may take 3-5m)...'})}\n\n"
-            proc_core = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", *core_reqs, "--index-url", "https://download.pytorch.org/whl/cu124", "--extra-index-url", "https://pypi.org/simple",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            )
-            async for raw in proc_core.stdout:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\n\n"
-            await proc_core.wait()
+            async for chunk in _run_and_stream([
+                str(pip_exe), "install", *core_reqs,
+                "--index-url", "https://download.pytorch.org/whl/cu124",
+                "--extra-index-url", "https://pypi.org/simple",
+            ]):
+                yield chunk
 
-            # Install Kaolin with verified compatibility
-            yield f"data: {json.dumps({'line': 'Installing NVIDIA Kaolin specialized geometry library...'})}\n\n"
-            proc_kaolin = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", "kaolin==0.18.0", "-f", "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.6.0_cu124.html",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            )
-            async for raw in proc_kaolin.stdout:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\n\n"
-            await proc_kaolin.wait()
+            yield _sse("Installing specialized 3D utility repository (utils3d)...")
+            async for chunk in _run_and_stream([
+                str(pip_exe), "install",
+                "git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8",
+            ]):
+                yield chunk
 
-            # Install nvdiffrast — builds from source, requires MSVC + CUDA toolkit
-            yield f"data: {json.dumps({'line': 'Building nvdiffrast (CUDA mesh rasterizer) — may take 5-10 min...'})}\n\n"
+            yield _sse("Configuring MSVC environment for TRELLIS.2 CUDA extensions (nvdiffrast, o-voxel, cumesh, flex_gemm)...")
+            nv_env, nv_note = await asyncio.to_thread(_msvc_build_env)
+            if nv_note:
+                yield _sse(nv_note)
+            if _relax_torch_cuda_check(venv_dir):
+                yield _sse("PyTorch CUDA version check relaxed for cross-version build.")
 
-            nv_env = dict(os.environ)
-            nv_env['TORCH_CUDA_ARCH_LIST'] = '8.0;8.6;8.9+PTX'
-            try:
-                vswhere_path = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
-                if os.path.exists(vswhere_path):
-                    vs_install = subprocess.check_output(
-                        [vswhere_path, "-latest", "-property", "installationPath"],
-                        text=True, errors='replace'
-                    ).strip()
-                    vcvarsall = os.path.join(vs_install, "VC", "Auxiliary", "Build", "vcvarsall.bat")
-                    if os.path.exists(vcvarsall):
-                        env_out = subprocess.run(
-                            f'cmd /c "call "{vcvarsall}" x64 && set"',
-                            shell=True, capture_output=True, text=True, errors='replace'
-                        )
-                        for ln in env_out.stdout.splitlines():
-                            if '=' in ln:
-                                k, v = ln.split('=', 1)
-                                nv_env[k] = v
-                        yield f"data: {json.dumps({'line': 'MSVC environment configured.'})}\n\n"
-            except Exception as _msvc_err:
-                yield f"data: {json.dumps({'line': f'Warning: MSVC setup failed: {_msvc_err}'})}\n\n"
-
-            # runtime; we just need to relax the compile-time check.
-            _cpp_ext = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
-            if _cpp_ext.exists():
-                try:
-                    _ce_src = _cpp_ext.read_text(encoding='utf-8')
-                    _ce_patched = _ce_src.replace(
-                        "raise RuntimeError(CUDA_MISMATCH_MESSAGE.format(cuda_str_version, torch.version.cuda))",
-                        "warnings.warn(f'[Aethvion] CUDA version mismatch ({cuda_str_version} vs {torch.version.cuda}) — proceeding.')"
-                    )
-                    if _ce_patched != _ce_src:
-                        _cpp_ext.write_text(_ce_patched, encoding='utf-8')
-                        yield f"data: {json.dumps({'line': 'PyTorch CUDA version check relaxed for cross-version build.'})}\n\n"
-                except Exception:
-                    pass
-
-            proc_nv = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", "--no-build-isolation",
-                "git+https://github.com/NVlabs/nvdiffrast",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                env=nv_env,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            )
-            async for raw in proc_nv.stdout:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\n\n"
-            await proc_nv.wait()
-            if proc_nv.returncode != 0:
-                yield f"data: {json.dumps({'line': 'Warning: nvdiffrast build failed — mesh postprocessing will be unavailable.'})}\n\n"
+            ext_specs = [
+                ("nvdiffrast", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/NVlabs/nvdiffrast"], None),
+                ("cumesh", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/JeffreyXiang/CuMesh.git"], None),
+                ("flex_gemm", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/JeffreyXiang/FlexGEMM.git"], None),
+            ]
+            ovoxel_dir = repo_dir / "o-voxel"
+            if ovoxel_dir.exists():
+                ext_specs.append(("o-voxel", [str(pip_exe), "install", "--no-build-isolation", "."], ovoxel_dir))
             else:
-                yield f"data: {json.dumps({'line': 'nvdiffrast installed successfully.'})}\n\n"
+                ext_specs.append(("o-voxel", [str(pip_exe), "install", "--no-build-isolation", "o-voxel"], None))
 
-            # Install custom utils3d as required by Trellis official
-            yield f"data: {json.dumps({'line': 'Installing specialized 3D utility repository (utils3d)...'})}\n\n"
-            proc_u3d = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", "git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                creationflags=0x08000000 if os.name == 'nt' else 0
-            )
-            async for raw in proc_u3d.stdout:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\n\n"
-            await proc_u3d.wait()
+            for label, cmd, cwd_dir in ext_specs:
+                yield _sse(f"Building/installing {label}...")
+                ext_rc = []
+                async for chunk in _run_and_stream(cmd, env=nv_env, cwd=cwd_dir, out_rc=ext_rc):
+                    yield chunk
+                if not ext_rc or ext_rc[0] != 0:
+                    yield _sse(f"Warning: {label} build failed — some advanced PBR/remeshing features may fall back.")
+                else:
+                    yield _sse(f"{label} installed successfully.")
 
-            # Windows Compatibility Hardening
-            yield f"data: {json.dumps({'line': 'Fixing path normalization for Windows...'})}\n\n"
-            try:
-                loader_file = repo_dir / "trellis" / "models" / "__init__.py"
-                if loader_file.exists():
-                    code = loader_file.read_text(encoding='utf-8')
-                    if 'path_norm = os.path.normpath(path)' not in code:
-                        fragile_block = 'is_local = os.path.exists'
-                        if fragile_block in code:
-                            new_body = """
-    # Aethvion Windows Path Patch (Directory-Aware)
-    path_norm = os.path.normpath(path)
-    # Check for directory structure first: path/config.json + path/model.safetensors
-    d_json = os.path.join(path_norm, "config.json")
-    d_st   = os.path.join(path_norm, "model.safetensors")
-    
-    # Check for flat structure: path.json + path.safetensors
-    f_json = f"{path_norm}.json"
-    f_st   = f"{path_norm}.safetensors"
+            yield _sse("Generating TRELLIS.2-4B FastAPI microservice hook (run_server.py)...")
+            server_template = (Path(__file__).parent / "templates" / "trellis2_server.py").read_text(encoding="utf-8")
+            run_script.write_text(server_template, encoding="utf-8")
 
-    is_local = False
-    if os.path.isdir(path_norm) and os.path.exists(d_json) and os.path.exists(d_st):
-        is_local = True
-        config_file = d_json
-        model_file = d_st
-    elif os.path.exists(f_json) and os.path.exists(f_st):
-        is_local = True
-        config_file = f_json
-        model_file = f_st
-
-    if is_local:
-        # proceed with config_file and model_file
-        pass
-    else:
-        from huggingface_hub import hf_hub_download
-        if os.path.isabs(path_norm) or ":\\\\" in path_norm or path_norm.startswith("\\\\\\\\"):
-             raise FileNotFoundError(f"Local model files not found at {path_norm}")
-        path_parts = path.replace('\\\\', '/').split('/')
-        if len(path_parts) < 2:
-            raise ValueError(f"Invalid model path or repo_id: {path}")
-        repo_id = f'{path_parts[0]}/{path_parts[1]}'
-        model_name = '/'.join(path_parts[2:])
-        config_file = hf_hub_download(repo_id, f"{model_name}.json")
-        model_file = hf_hub_download(repo_id, f"{model_name}.safetensors")
-    # End Patch
-"""
-                            s_idx = code.find(fragile_block)
-                            e_idx = code.find('with open(config_file')
-                            if s_idx != -1 and e_idx != -1:
-                                patched_code = code[:s_idx] + new_body.strip() + "\n\n    " + code[e_idx:]
-                                loader_file.write_text(patched_code, encoding='utf-8')
-                                yield f"data: {json.dumps({'line': 'Path patch complete.'})}\n\n"
-
-                # Attention Patches
-                yield f"data: {json.dumps({'line': 'Patching attention modules for SDPA support...'})}\n\n"
-                from . import trellis_patches  # noqa: PLC0415
-                for _pl in trellis_patches.apply_sdpa_patches(repo_dir):
-                    yield f"data: {json.dumps({'line': '  ' + _pl})}\n\n"
-
-            except Exception as e:
-                yield f"data: {json.dumps({'line': f'Warning: Attention patch failed: {e}'})}\n\n"
-
-            # 6. Generate the Server Script Wrapper
-            yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
-
-            # Clean server template — all dependencies are real installed packages.
-            # {MODEL_NAME} and {MODEL_ID} are substituted below via .replace().
-            server_template = (Path(__file__).parent / 'templates' / 'tsr_server_template.py').read_text(encoding='utf-8')
-            run_script.write_text(
-                server_template.replace("{MODEL_NAME}", model.title()).replace("{MODEL_ID}", model),
-                encoding='utf-8'
-            )
-
-            # 6. Create success lockfile
-            yield f"data: {json.dumps({'line': 'Finalizing installation...'})}\n\n"
-            install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding='utf-8')
-                
+            yield _sse("Finalizing installation...")
+            install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding="utf-8")
             yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
-            
+
         except Exception as e:
             logger.error(f"Installation failed: {e}")
             yield f"data: {json.dumps({'done': True, 'success': False, 'error': str(e)})}\n\n"

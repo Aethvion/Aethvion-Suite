@@ -181,18 +181,54 @@ def call_suite_3d(endpoint: dict, req: InvokeRequest) -> RawResult:
     from core.interfaces.dashboard import three_d_routes  # noqa: PLC0415
 
     model_id = endpoint["id"].split(":", 1)[1]
-    image_b64 = values.to_base64(req.image)
-    if not image_b64 and not req.prompt:
-        raise EndpointError("3D generation needs a prompt or a reference image")
-    body = three_d_routes.ThreeDGenerationRequest(
-        action="image23d" if image_b64 else "generate",
-        prompt=req.prompt or None,
-        input_image=image_b64 or None,
-        model=model_id,
-        seed=_num(req.params.get("seed"), None, int),
-    )
-    req.info(f"Starting local 3D worker '{model_id}' (first run loads the model and can take minutes)…")
-    resp = _run_coro(three_d_routes.generate_3d_asset(body))
+    p = req.params or {}
+
+    if req.capability == "mesh.texture":
+        mesh_b64 = values.to_base64(req.mesh)
+        if not mesh_b64:
+            raise EndpointError("3D texturing needs a mesh input")
+        image_b64 = values.to_base64(req.image)
+        tex_body = three_d_routes.ThreeDTextureRequest(
+            mesh_base64=mesh_b64,
+            input_image=image_b64 or None,
+            model=model_id,
+            max_num_view=_num(p.get("max_num_view"), 6, int),
+            texture_resolution=_num(p.get("texture_resolution"), 512, int),
+            seed=_num(p.get("seed"), None, int),
+        )
+        req.info(f"Running local 3D PBR texture worker '{model_id}'…")
+        resp = _run_coro(three_d_routes.texture_3d_asset(tex_body))
+    else:
+        image_b64 = values.to_base64(req.image)
+        if not image_b64 and not req.prompt:
+            raise EndpointError("3D generation needs a prompt or a reference image")
+        quality = str(p.get("resolution") or p.get("quality") or "1024")
+        textured = bool(p.get("textured", True))
+        extra_keys = set(p) - {
+            "seed", "quality", "resolution", "textured", "pbr",
+            "decimation_target", "texture_size", "remesh",
+            "max_num_view", "texture_resolution", "steps",
+        }
+        body = three_d_routes.ThreeDGenerationRequest(
+            action="image23d" if image_b64 else "generate",
+            prompt=req.prompt or None,
+            input_image=image_b64 or None,
+            model=model_id,
+            quality=quality,
+            seed=_num(p.get("seed"), None, int),
+            textured=textured,
+            pbr=bool(p.get("pbr", True)),
+            decimation_target=_num(p.get("decimation_target"), None, int),
+            texture_size=_num(p.get("texture_size"), None, int),
+            remesh=p["remesh"] if "remesh" in p and p["remesh"] is not None else None,
+            max_num_view=_num(p.get("max_num_view"), None, int),
+            texture_resolution=_num(p.get("texture_resolution"), None, int),
+            steps=_num(p.get("steps"), None, int),
+            extra_params={k: p[k] for k in extra_keys} or None,
+        )
+        req.info(f"Starting local 3D worker '{model_id}' (first run loads the model and can take minutes)…")
+        resp = _run_coro(three_d_routes.generate_3d_asset(body))
+
     if not resp.success or not resp.asset:
         raise EndpointError(resp.error or "3D generation failed")
     path = Path(resp.asset.path)
