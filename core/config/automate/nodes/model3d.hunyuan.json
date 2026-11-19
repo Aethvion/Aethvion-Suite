@@ -1,0 +1,116 @@
+{
+  "type": "model3d.hunyuan",
+  "label": "Hunyuan3D 2.1 Generate",
+  "category": "Models",
+  "icon": "fa-cube",
+  "color": "#f472b6",
+  "description": "Generate a watertight, game-ready PBR 3D GLB mesh from an image using local Tencent Hunyuan3D 2.1.",
+  "inputs": [
+    {
+      "name": "image",
+      "label": "Reference Image",
+      "description": "Prepped square reference image."
+    },
+    {
+      "name": "enabled",
+      "label": "Enabled",
+      "description": "Optional boolean toggle to enable/skip this branch."
+    },
+    {
+      "name": "params",
+      "label": "Parameters",
+      "description": "Extra JSON parameters merged over node properties."
+    },
+    {
+      "name": "model",
+      "label": "Endpoint Override",
+      "description": "Overrides the 3D endpoint at runtime (e.g. demo:mesh for tests)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "mesh",
+      "label": "Mesh",
+      "description": "Generated 3D .glb asset."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the .glb file."
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "description": "URL of the generated mesh."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if generation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "enabled",
+      "label": "Enabled",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "endpoint",
+      "label": "Model Endpoint",
+      "type": "model_select",
+      "source": "/api/modelhub/models?capability=mesh.generate",
+      "default": "3d:hunyuan3d",
+      "placeholder": "3d:hunyuan3d"
+    },
+    {
+      "key": "textured",
+      "label": "Run PBR Texture Paint Stage",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "max_num_view",
+      "label": "Paint Views",
+      "type": "number",
+      "default": 6,
+      "placeholder": "6"
+    },
+    {
+      "key": "texture_resolution",
+      "label": "Texture Resolution",
+      "type": "select",
+      "default": "512",
+      "options": ["512", "768"]
+    },
+    {
+      "key": "steps",
+      "label": "Shape Diffusion Steps",
+      "type": "number",
+      "default": 50,
+      "placeholder": "50"
+    },
+    {
+      "key": "seed",
+      "label": "Seed",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = default 42)"
+    },
+    {
+      "key": "name",
+      "label": "Asset Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto)"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "hunyuan3d, pbr",
+      "placeholder": "hunyuan3d, pbr"
+    }
+  ]
+}

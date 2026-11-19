@@ -14,8 +14,10 @@ wired, the node fails visibly instead of passing an empty value downstream.
 """
 from __future__ import annotations
 
+import io
 import json
 import uuid
+from pathlib import Path
 from typing import Any
 
 from ._utils import _to_str, _get_pm
@@ -86,11 +88,12 @@ def _text_in(inputs: dict, p: dict, port: str, prop: str | None = None) -> str:
 _DATA_PORTS = ("out", "asset", "text", "path", "url", "all")
 
 
-def _invoke(node: dict, inputs: dict, ctx, capability: str, *, extra_params: dict | None = None) -> dict[str, Any]:
+def _invoke(node: dict, inputs: dict, ctx, capability: str, *, extra_params: dict | None = None,
+            default_endpoint: str | None = None) -> dict[str, Any]:
     from core.modelhub import hub  # noqa: PLC0415
 
     p = node.get("properties", {})
-    endpoint = _text_in(inputs, p, "model", "endpoint")
+    endpoint = _text_in(inputs, p, "model", "endpoint") or (default_endpoint or "")
     if not endpoint:
         raise ValueError("No model selected — open the node's properties and pick one.")
 
@@ -162,6 +165,204 @@ def model3d_texture(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     out = _invoke(node, inputs, ctx, "mesh.texture", extra_params=_seed_param(node.get("properties", {})))
     out["mesh"] = out.get("asset")
     return out
+
+
+def _is_enabled(inputs: dict, p: dict) -> bool:
+    raw = inputs.get("enabled")
+    if raw is None:
+        raw = p.get("enabled", True)
+    if isinstance(raw, str):
+        return raw.strip().lower() not in ("false", "0", "no", "off", "")
+    return bool(raw)
+
+
+# image.prep_3d — clean background removal, tight crop & square padding for 3D generation
+
+def image_prep_3d(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    from core.assets import store, values  # noqa: PLC0415
+    from PIL import Image                # noqa: PLC0415
+
+    ports = ("image", "path", "url", "width", "height")
+    val = require_input(ctx, node, inputs, "image", "image", ports)
+    if val is None:
+        return {**{k: None for k in ports}, "error": "No image connected."}
+
+    media = values.read_media(val)
+    if not media:
+        return fail(ctx, node, "Could not read reference image.", ports)
+
+    p = node.get("properties", {})
+    try:
+        target_size = max(128, min(4096, int(p.get("size", 1024) or 1024)))
+    except (TypeError, ValueError):
+        target_size = 1024
+    try:
+        padding_ratio = max(0.0, min(0.45, float(p.get("padding_ratio", 0.12) or 0.12)))
+    except (TypeError, ValueError):
+        padding_ratio = 0.12
+    remove_bg = p.get("remove_bg", True) is not False
+    bg_mode = str(p.get("background", "transparent") or "transparent").strip().lower()
+
+    im = Image.open(io.BytesIO(media[0]))
+    if im.mode != "RGBA":
+        im = im.convert("RGBA")
+
+    ext = im.getchannel("A").getextrema()
+    has_transparency = bool(ext and ext[0] < 250)
+    if remove_bg and not has_transparency:
+        try:
+            import rembg  # noqa: PLC0415
+            im = rembg.remove(im).convert("RGBA")
+        except Exception as exc:  # noqa: BLE001
+            ctx._warn(f"    Background removal skipped ({exc}); using padded crop as-is.")
+
+    alpha = im.getchannel("A")
+    a_ext = alpha.getextrema()
+    if a_ext and a_ext[0] < 250:
+        bbox = alpha.getbbox()
+        if bbox:
+            im = im.crop(bbox)
+
+    inner = max(16, int(round(target_size * (1.0 - 2.0 * padding_ratio))))
+    w, h = im.size
+    if w > 0 and h > 0:
+        scale = inner / max(w, h)
+        new_w = max(1, int(round(w * scale)))
+        new_h = max(1, int(round(h * scale)))
+        resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.LANCZOS)
+        im = im.resize((new_w, new_h), resample)
+
+    bg_color = (255, 255, 255, 255) if bg_mode == "white" else (0, 0, 0, 0)
+    canvas = Image.new("RGBA", (target_size, target_size), bg_color)
+    ox = (target_size - im.width) // 2
+    oy = (target_size - im.height) // 2
+    canvas.paste(im, (ox, oy), im)
+
+    out_buf = io.BytesIO()
+    canvas.save(out_buf, format="PNG")
+    parent = values.asset_id_of(val)
+    rec = store.create_from_bytes(
+        out_buf.getvalue(),
+        ext="png",
+        kind="image",
+        name=str(p.get("name", "") or "prepped_3d"),
+        source=ctx.asset_source(node),
+        parents=[parent] if parent else [],
+        tags=_tags(p.get("tags") or "prepped, 3d-input"),
+    )
+    ref = store.asset_ref(rec)
+    return {
+        "image": ref,
+        "path": ref["path"],
+        "url": ref["url"],
+        "width": target_size,
+        "height": target_size,
+        "error": "",
+    }
+
+
+# model3d.trellis / model3d.hunyuan — dedicated engine nodes with toggleable branch execution
+
+def model3d_trellis(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p = node.get("properties", {})
+    if not _is_enabled(inputs, p):
+        from core.automate.executor import NodeSkipped  # noqa: PLC0415
+        raise NodeSkipped("TRELLIS.2 branch disabled")
+    if require_input(ctx, node, inputs, "image", "reference image", _DATA_PORTS + ("mesh",)) is None:
+        return {**{k: None for k in _DATA_PORTS + ("mesh",)}, "error": "No reference image connected."}
+
+    extra: dict[str, Any] = {
+        "resolution": str(p.get("resolution", "1024") or "1024"),
+        "texture_size": int(p.get("texture_size", 2048) or 2048),
+        "decimation_target": int(p.get("decimation_target", 100000) or 100000),
+        "remesh": p.get("remesh", True) is not False,
+        "textured": True,
+        "pbr": True,
+    }
+    extra.update(_seed_param(p))
+    out = _invoke(node, inputs, ctx, "mesh.generate", extra_params=extra, default_endpoint="3d:trellis-2")
+    out["mesh"] = out.get("asset")
+    return out
+
+
+def model3d_hunyuan(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p = node.get("properties", {})
+    if not _is_enabled(inputs, p):
+        from core.automate.executor import NodeSkipped  # noqa: PLC0415
+        raise NodeSkipped("Hunyuan3D 2.1 branch disabled")
+    if require_input(ctx, node, inputs, "image", "reference image", _DATA_PORTS + ("mesh",)) is None:
+        return {**{k: None for k in _DATA_PORTS + ("mesh",)}, "error": "No reference image connected."}
+
+    textured = p.get("textured", True) is not False
+    extra: dict[str, Any] = {
+        "textured": textured,
+        "pbr": textured,
+        "max_num_view": int(p.get("max_num_view", 6) or 6),
+        "texture_resolution": int(p.get("texture_resolution", 512) or 512),
+        "steps": int(p.get("steps", 50) or 50),
+    }
+    extra.update(_seed_param(p))
+    out = _invoke(node, inputs, ctx, "mesh.generate", extra_params=extra, default_endpoint="3d:hunyuan3d")
+    out["mesh"] = out.get("asset")
+    return out
+
+
+# mesh.normalize — center XZ, ground Y=0, scale & rotate GLB in pure Python
+
+def mesh_normalize(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    from core.assets import store, values  # noqa: PLC0415
+    from core.modelhub import glb           # noqa: PLC0415
+
+    ports = ("mesh", "path", "url", "stats")
+    mesh_val = require_input(ctx, node, inputs, "mesh", "mesh", ports)
+    if mesh_val is None:
+        return {**{k: None for k in ports}, "error": "No mesh connected."}
+
+    p = node.get("properties", {})
+    path = values.local_path(mesh_val) or str(p.get("path", "") or "").strip()
+    if not path or not Path(path).is_file():
+        return fail(ctx, node, "No valid mesh file found to normalize.", ports)
+
+    raw_bytes = Path(path).read_bytes()
+    try:
+        target_size = float(p.get("target_size", 1.0) or 1.0)
+    except (TypeError, ValueError):
+        target_size = 1.0
+    try:
+        rotate_y_deg = float(p.get("rotate_y_deg", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        rotate_y_deg = 0.0
+
+    try:
+        out_bytes, stats = glb.normalize_glb(
+            raw_bytes,
+            center_xz=p.get("center_xz", True) is not False,
+            ground_y=p.get("ground_y", True) is not False,
+            target_size=target_size,
+            rotate_y_deg=rotate_y_deg,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return fail(ctx, node, f"Mesh normalization failed: {exc}", ports)
+
+    parent = values.asset_id_of(mesh_val)
+    default_name = f"{Path(path).stem}_norm"
+    rec = store.create_from_bytes(
+        out_bytes,
+        ext="glb",
+        kind="mesh",
+        name=str(p.get("name", "") or default_name),
+        source=ctx.asset_source(node),
+        parents=[parent] if parent else [],
+        tags=_tags(p.get("tags") or "normalized, game-ready"),
+    )
+    ref = store.asset_ref(rec)
+    return {
+        "mesh": ref,
+        "path": ref["path"],
+        "url": ref["url"],
+        "stats": stats,
+        "error": "",
+    }
 
 
 # mesh.inspect

@@ -241,6 +241,7 @@ import { ThreeDViewer } from './3d-viewer.js';
             const prompt = document.getElementById('tg-prompt').value;
             const quality = document.getElementById('tg-quality').value;
             const textured = document.getElementById('tg-textured').checked;
+            const pbr = Boolean(document.getElementById('tg-pbr')?.checked);
             const seed = document.getElementById('tg-seed').value;
 
             if (this.state.currentMode === 'i23d' && !this.state.uploadedImage) {
@@ -266,6 +267,7 @@ import { ThreeDViewer } from './3d-viewer.js';
                         model: model,
                         quality: quality,
                         textured: textured,
+                        pbr: pbr,
                         seed: seed ? parseInt(seed) : null
                     })
                 });

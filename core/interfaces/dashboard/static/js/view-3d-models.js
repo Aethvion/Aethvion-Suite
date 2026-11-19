@@ -13,6 +13,7 @@
             this.initHardwareProfile();
             this.updateStatus();
             this.checkInstallStatus('trellis-2');
+            this.checkInstallStatus('hunyuan3d');
             this.checkInstallStatus('triposr');
         },
 
@@ -35,7 +36,11 @@
             if (!window.HardwareProfile) return;
             const t2Badge = document.getElementById('trellis2-compat-badge');
             if (t2Badge) {
-                t2Badge.innerHTML = window.HardwareProfile.renderBadge({ id: 'trellis-2', type: '3d', req_vram_gb: 12 });
+                t2Badge.innerHTML = window.HardwareProfile.renderBadge({ id: 'trellis-2', type: '3d', req_vram_gb: 16 });
+            }
+            const hyBadge = document.getElementById('hunyuan3d-compat-badge');
+            if (hyBadge) {
+                hyBadge.innerHTML = window.HardwareProfile.renderBadge({ id: 'hunyuan3d', type: '3d', req_vram_gb: 20 });
             }
             const tripoBadge = document.getElementById('triposr-compat-badge');
             if (tripoBadge) {
@@ -54,8 +59,8 @@
                 refreshBtn.addEventListener('click', () => this.refresh());
             }
 
-            // Bind for both models
-            [{id: 'trellis-2', mid: 'trellis2'}, {id: 'triposr', mid: 'triposr'}].forEach(m => {
+            // Bind for all 3D models
+            [{id: 'trellis-2', mid: 'trellis2'}, {id: 'hunyuan3d', mid: 'hunyuan3d'}, {id: 'triposr', mid: 'triposr'}].forEach(m => {
                 const btnInstall = document.getElementById(`btn-install-full-${m.mid}`);
                 const btnRun = document.getElementById(`btn-run-${m.mid}`);
                 const btnFix = document.getElementById(`btn-fix-${m.mid}`);
@@ -72,7 +77,8 @@
             const compatVal = (document.getElementById('td-compat-filter')?.value || 'all').toLowerCase();
 
             const models = [
-                { id: 'trellis-2', name: 'trellis 2', card: document.getElementById('btn-run-trellis2')?.closest('.hub-provider-section') },
+                { id: 'trellis-2', name: 'trellis 2 trellis2 pbr', card: document.getElementById('btn-run-trellis2')?.closest('.hub-provider-section') },
+                { id: 'hunyuan3d', name: 'hunyuan3d hunyuan 2.1 pbr tencent', card: document.getElementById('btn-run-hunyuan3d')?.closest('.hub-provider-section') },
                 { id: 'triposr', name: 'triposr', card: document.getElementById('btn-run-triposr')?.closest('.hub-provider-section') }
             ];
 
@@ -120,6 +126,9 @@
                 const data = await res.json();
                 const isFullyReady = data.installed && data.weights_installed;
 
+                const upgBadge = document.getElementById(`${mid}-upgrade-badge`);
+                if (upgBadge) upgBadge.style.display = data.needs_upgrade ? 'inline-flex' : 'none';
+
                 btnInstall.style.display = isFullyReady ? 'none' : 'block';
                 btnRun.style.display = isFullyReady ? 'block' : 'none';
                 if (fixContainer) fixContainer.style.display = isFullyReady ? 'block' : 'none';
@@ -166,7 +175,7 @@
 
                     if (!badge) return;
 
-                    const label = modelId === 'trellis-2' ? 'Trellis 2' : 'TripoSR';
+                    const label = modelId === 'trellis-2' ? 'TRELLIS.2-4B' : modelId === 'hunyuan3d' ? 'Hunyuan3D 2.1' : 'TripoSR';
 
                     if (data.status === 'online') {
                         badge.innerHTML = `<i class="fas fa-check-circle" style="color:#4ade80;"></i> ${label} is Ready`;
@@ -391,6 +400,7 @@
             if (icon) icon.classList.add('fa-spin');
             setTimeout(() => {
                 this.checkInstallStatus('trellis-2');
+                this.checkInstallStatus('hunyuan3d');
                 this.checkInstallStatus('triposr');
                 this.updateStatus();
                 if (icon) icon.classList.remove('fa-spin');

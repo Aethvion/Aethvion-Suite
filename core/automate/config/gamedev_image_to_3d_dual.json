@@ -1,0 +1,40 @@
+{
+  "name": "Image to 3D Studio (TRELLIS.2 + Hunyuan3D 2.1)",
+  "description": "Turn any picture into clean, game-ready 3D GLB assets using TRELLIS.2-4B, Hunyuan3D 2.1, or both side by side. Automatically preps and pads the image, generates models (safely serialized on 24 GB VRAM), normalizes scale/grounding, and inspects geometry and PBR textures.",
+  "tags": ["gamedev", "3d", "models", "trellis", "hunyuan", "pbr"],
+  "nodes": [
+    {"id": "t", "type": "trigger.manual", "label": "Run", "x": 40, "y": 240, "properties": {"name": "Run"}},
+    {"id": "img", "type": "input.image", "label": "Reference Image", "x": 40, "y": 400, "properties": {"image": "", "tags": "reference"}},
+    {"id": "tog_trellis", "type": "global.toggle", "label": "Run TRELLIS.2", "x": 40, "y": 60, "properties": {"name": "run_trellis", "value": true}},
+    {"id": "tog_hunyuan", "type": "global.toggle", "label": "Run Hunyuan3D 2.1", "x": 40, "y": 560, "properties": {"name": "run_hunyuan", "value": true}},
+    {"id": "prep", "type": "image.prep_3d", "label": "Prep Image for 3D", "x": 300, "y": 260, "properties": {"remove_bg": true, "size": "1024", "padding_ratio": 0.12, "background": "transparent", "tags": "prepped, 3d-input"}},
+    {"id": "gen_trellis", "type": "model3d.trellis", "label": "TRELLIS.2-4B Generate", "x": 600, "y": 100, "properties": {"enabled": true, "endpoint": "3d:trellis-2", "resolution": "1024", "texture_size": "2048", "decimation_target": 100000, "remesh": true, "seed": "", "name": "", "tags": "trellis2, pbr"}},
+    {"id": "norm_trellis", "type": "mesh.normalize", "label": "Normalize TRELLIS Mesh", "x": 880, "y": 100, "properties": {"center_xz": true, "ground_y": true, "target_size": 1.0, "rotate_y_deg": 0, "tags": "trellis2, game-ready"}},
+    {"id": "check_trellis", "type": "mesh.inspect", "label": "Inspect TRELLIS Mesh", "x": 1160, "y": 100, "properties": {"max_triangles": 0, "require_uvs": false, "require_textures": false, "extract_textures": true}},
+    {"id": "out_trellis_mesh", "type": "output.display", "label": "TRELLIS.2 3D Model", "x": 1440, "y": 40, "properties": {}},
+    {"id": "out_trellis_report", "type": "output.display", "label": "TRELLIS.2 Report", "x": 1440, "y": 200, "properties": {}},
+    {"id": "gen_hunyuan", "type": "model3d.hunyuan", "label": "Hunyuan3D 2.1 Generate", "x": 600, "y": 440, "properties": {"enabled": true, "endpoint": "3d:hunyuan3d", "textured": true, "max_num_view": 6, "texture_resolution": "512", "steps": 50, "seed": "", "name": "", "tags": "hunyuan3d, pbr"}},
+    {"id": "norm_hunyuan", "type": "mesh.normalize", "label": "Normalize Hunyuan Mesh", "x": 880, "y": 440, "properties": {"center_xz": true, "ground_y": true, "target_size": 1.0, "rotate_y_deg": 0, "tags": "hunyuan3d, game-ready"}},
+    {"id": "check_hunyuan", "type": "mesh.inspect", "label": "Inspect Hunyuan Mesh", "x": 1160, "y": 440, "properties": {"max_triangles": 0, "require_uvs": false, "require_textures": false, "extract_textures": true}},
+    {"id": "out_hunyuan_mesh", "type": "output.display", "label": "Hunyuan3D 3D Model", "x": 1440, "y": 380, "properties": {}},
+    {"id": "out_hunyuan_report", "type": "output.display", "label": "Hunyuan3D Report", "x": 1440, "y": 540, "properties": {}}
+  ],
+  "connections": [
+    {"id": "c_t_prep", "sourceNodeId": "t", "sourcePort": "trigger", "targetNodeId": "prep", "targetPort": "__trigger__"},
+    {"id": "c_t_tog1", "sourceNodeId": "t", "sourcePort": "trigger", "targetNodeId": "tog_trellis", "targetPort": "__trigger__"},
+    {"id": "c_t_tog2", "sourceNodeId": "t", "sourcePort": "trigger", "targetNodeId": "tog_hunyuan", "targetPort": "__trigger__"},
+    {"id": "c_img_prep", "sourceNodeId": "img", "sourcePort": "image", "targetNodeId": "prep", "targetPort": "image"},
+    {"id": "c_prep_tr", "sourceNodeId": "prep", "sourcePort": "image", "targetNodeId": "gen_trellis", "targetPort": "image"},
+    {"id": "c_tog_tr", "sourceNodeId": "tog_trellis", "sourcePort": "out", "targetNodeId": "gen_trellis", "targetPort": "enabled"},
+    {"id": "c_tr_norm", "sourceNodeId": "gen_trellis", "sourcePort": "mesh", "targetNodeId": "norm_trellis", "targetPort": "mesh"},
+    {"id": "c_norm_tr_chk", "sourceNodeId": "norm_trellis", "sourcePort": "mesh", "targetNodeId": "check_trellis", "targetPort": "mesh"},
+    {"id": "c_norm_tr_out", "sourceNodeId": "norm_trellis", "sourcePort": "mesh", "targetNodeId": "out_trellis_mesh", "targetPort": "in"},
+    {"id": "c_chk_tr_out", "sourceNodeId": "check_trellis", "sourcePort": "summary", "targetNodeId": "out_trellis_report", "targetPort": "in"},
+    {"id": "c_prep_hy", "sourceNodeId": "prep", "sourcePort": "image", "targetNodeId": "gen_hunyuan", "targetPort": "image"},
+    {"id": "c_tog_hy", "sourceNodeId": "tog_hunyuan", "sourcePort": "out", "targetNodeId": "gen_hunyuan", "targetPort": "enabled"},
+    {"id": "c_hy_norm", "sourceNodeId": "gen_hunyuan", "sourcePort": "mesh", "targetNodeId": "norm_hunyuan", "targetPort": "mesh"},
+    {"id": "c_norm_hy_chk", "sourceNodeId": "norm_hunyuan", "sourcePort": "mesh", "targetNodeId": "check_hunyuan", "targetPort": "mesh"},
+    {"id": "c_norm_hy_out", "sourceNodeId": "norm_hunyuan", "sourcePort": "mesh", "targetNodeId": "out_hunyuan_mesh", "targetPort": "in"},
+    {"id": "c_chk_hy_out", "sourceNodeId": "check_hunyuan", "sourcePort": "summary", "targetNodeId": "out_hunyuan_report", "targetPort": "in"}
+  ]
+}

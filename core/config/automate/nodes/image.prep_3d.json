@@ -1,0 +1,83 @@
+{
+  "type": "image.prep_3d",
+  "label": "Prep Image for 3D",
+  "category": "Models",
+  "icon": "fa-crop-simple",
+  "color": "#38bdf8",
+  "description": "Remove background (optional), tightly crop the subject, and pad to a clean square canvas so 3D generators produce crisp geometry without clipped edges.",
+  "inputs": [
+    {
+      "name": "image",
+      "label": "Reference Image",
+      "description": "Input picture (asset, file path, or data URI)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "image",
+      "label": "Prepared Image",
+      "description": "Clean square PNG ready for TRELLIS.2 or Hunyuan3D 2.1."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the prepared PNG."
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "description": "Asset URL inside the Suite."
+    },
+    {
+      "name": "width",
+      "label": "Width",
+      "description": "Canvas width in pixels."
+    },
+    {
+      "name": "height",
+      "label": "Height",
+      "description": "Canvas height in pixels."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if preparation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "remove_bg",
+      "label": "Remove Background (rembg)",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "size",
+      "label": "Output Canvas Size",
+      "type": "select",
+      "default": "1024",
+      "options": ["512", "1024", "1536"]
+    },
+    {
+      "key": "padding_ratio",
+      "label": "Margin Ratio",
+      "type": "number",
+      "default": 0.12,
+      "placeholder": "0.12 (12% margin around subject)"
+    },
+    {
+      "key": "background",
+      "label": "Canvas Background",
+      "type": "select",
+      "default": "transparent",
+      "options": ["transparent", "white"]
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "prepped, 3d-input",
+      "placeholder": "prepped, 3d-input"
+    }
+  ]
+}

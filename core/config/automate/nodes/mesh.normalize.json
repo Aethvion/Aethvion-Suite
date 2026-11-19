@@ -1,0 +1,84 @@
+{
+  "type": "mesh.normalize",
+  "label": "Normalize 3D Mesh",
+  "category": "Models",
+  "icon": "fa-ruler-combined",
+  "color": "#34d399",
+  "description": "Center X/Z, snap the base to Y=0, uniformly scale to a target bounding size, and rotate around Y in pure Python while preserving UVs and PBR textures.",
+  "inputs": [
+    {
+      "name": "mesh",
+      "label": "Mesh",
+      "description": "Input 3D .glb asset."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "mesh",
+      "label": "Normalized Mesh",
+      "description": "Normalized .glb asset."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the normalized .glb."
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "description": "URL of the normalized .glb."
+    },
+    {
+      "name": "stats",
+      "label": "Stats",
+      "description": "Updated GLB inspection measurements."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if normalization failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "center_xz",
+      "label": "Center X / Z",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "ground_y",
+      "label": "Snap Base to Y = 0",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "target_size",
+      "label": "Target Max Size",
+      "type": "number",
+      "default": 1.0,
+      "placeholder": "1.0"
+    },
+    {
+      "key": "rotate_y_deg",
+      "label": "Rotate Y (Degrees)",
+      "type": "number",
+      "default": 0,
+      "placeholder": "0"
+    },
+    {
+      "key": "name",
+      "label": "Asset Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto)"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "normalized, game-ready",
+      "placeholder": "normalized, game-ready"
+    }
+  ]
+}

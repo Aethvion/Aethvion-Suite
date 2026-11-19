@@ -90,10 +90,14 @@ _REGISTRY: dict[str, Callable] = {
     "ai.text_to_speech":  media.ai_text_to_speech,
 
     # Models (Model Hub) — any endpoint: LLM, image, 3D, HTTP API, command-line tool
+    "image.prep_3d":     models.image_prep_3d,
     "model.run":         models.model_run,
     "model3d.generate":  models.model3d_generate,
+    "model3d.hunyuan":   models.model3d_hunyuan,
     "model3d.texture":   models.model3d_texture,
+    "model3d.trellis":   models.model3d_trellis,
     "mesh.inspect":      models.mesh_inspect,
+    "mesh.normalize":    models.mesh_normalize,
     "quality.verify":    models.quality_verify,
 
     # Assets (Asset Library)

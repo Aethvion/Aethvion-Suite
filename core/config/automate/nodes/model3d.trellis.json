@@ -1,0 +1,116 @@
+{
+  "type": "model3d.trellis",
+  "label": "TRELLIS.2 Generate",
+  "category": "Models",
+  "icon": "fa-cubes",
+  "color": "#818cf8",
+  "description": "Generate a high-detail PBR 3D GLB mesh from an image using local Microsoft TRELLIS.2-4B (O-Voxel).",
+  "inputs": [
+    {
+      "name": "image",
+      "label": "Reference Image",
+      "description": "Prepped square reference image."
+    },
+    {
+      "name": "enabled",
+      "label": "Enabled",
+      "description": "Optional boolean toggle to enable/skip this branch."
+    },
+    {
+      "name": "params",
+      "label": "Parameters",
+      "description": "Extra JSON parameters merged over node properties."
+    },
+    {
+      "name": "model",
+      "label": "Endpoint Override",
+      "description": "Overrides the 3D endpoint at runtime (e.g. demo:mesh for tests)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "mesh",
+      "label": "Mesh",
+      "description": "Generated 3D .glb asset."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Local path of the .glb file."
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "description": "URL of the generated mesh."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if generation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "enabled",
+      "label": "Enabled",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "endpoint",
+      "label": "Model Endpoint",
+      "type": "model_select",
+      "source": "/api/modelhub/models?capability=mesh.generate",
+      "default": "3d:trellis-2",
+      "placeholder": "3d:trellis-2"
+    },
+    {
+      "key": "resolution",
+      "label": "Voxel Resolution",
+      "type": "select",
+      "default": "1024",
+      "options": ["512", "1024", "1536"]
+    },
+    {
+      "key": "texture_size",
+      "label": "Texture Size",
+      "type": "select",
+      "default": "2048",
+      "options": ["1024", "2048", "4096"]
+    },
+    {
+      "key": "decimation_target",
+      "label": "Target Triangles",
+      "type": "number",
+      "default": 100000,
+      "placeholder": "100000"
+    },
+    {
+      "key": "remesh",
+      "label": "Clean Remesh",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "seed",
+      "label": "Seed",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = default 42)"
+    },
+    {
+      "key": "name",
+      "label": "Asset Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto)"
+    },
+    {
+      "key": "tags",
+      "label": "Tags",
+      "type": "text",
+      "default": "trellis2, pbr",
+      "placeholder": "trellis2, pbr"
+    }
+  ]
+}

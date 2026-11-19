@@ -577,3 +577,155 @@ def test_trellis_source_patch_is_valid_and_idempotent(tmp_path):
     assert (attn / "full_attn.py").read_text(encoding="utf-8") == first
     assert (chr(92) + "n") not in first.split("def f")[0]        # no literal backslash-n (the old bug)
     assert first.count("elif ATTN == 'sdpa':") == 2
+
+
+def test_glb_normalize_centers_grounds_scales_and_rotates():
+    import struct
+
+    raw = glb.make_box_glb((2.0, 4.0, 1.0))
+    gltf, bin_chunk = glb.parse_glb(raw)
+    buf = bytearray(bin_chunk)
+    pos_acc = gltf["accessors"][0]
+    pos_bv = gltf["bufferViews"][pos_acc["bufferView"]]
+    base = pos_bv.get("byteOffset", 0) + pos_acc.get("byteOffset", 0)
+    for i in range(pos_acc["count"]):
+        x, y, z = struct.unpack_from("<fff", buf, base + i * 12)
+        struct.pack_into("<fff", buf, base + i * 12, x + 5.0, y - 3.0, z - 8.0)
+    shifted = glb.build_glb(gltf, bytes(buf))
+
+    norm_bytes, stats = glb.normalize_glb(
+        shifted, center_xz=True, ground_y=True, target_size=2.0, rotate_y_deg=90.0
+    )
+    bmin, bmax = stats["bounds_min"], stats["bounds_max"]
+    assert abs(bmin[1] - 0.0) < 1e-4
+    assert abs((bmin[0] + bmax[0]) * 0.5) < 1e-4
+    assert abs((bmin[2] + bmax[2]) * 0.5) < 1e-4
+    assert abs(max(stats["size"]) - 2.0) < 1e-4
+    # After 90 deg Y rotation, original X=2.0 and Z=1.0 swap extents (Y stays 4.0 -> 2.0)
+    assert abs(stats["size"][0] - 0.5) < 1e-4
+    assert abs(stats["size"][2] - 1.0) < 1e-4
+    assert stats["has_uvs"] is True
+    assert stats["has_normals"] is True
+
+
+def test_image_prep_3d_crops_and_pads_square(tmp_path):
+    from PIL import Image
+
+    src_path = tmp_path / "prop.png"
+    img = Image.new("RGBA", (300, 180), (0, 0, 0, 0))
+    for y in range(20, 80):
+        for x in range(180, 260):
+            img.putpixel((x, y), (220, 80, 40, 255))
+    img.save(src_path)
+
+    wf = _wf(
+        [
+            _n("t", "trigger.manual"),
+            _n("img", "input.image", image=str(src_path)),
+            _n("prep", "image.prep_3d", remove_bg=False, size="256", padding_ratio=0.1, background="transparent"),
+        ],
+        [_trig("prep"), _c("img", "image", "prep", "image")],
+    )
+    res = WorkflowExecutor(wf).execute()
+    assert res["ok"], res["node_errors"]
+    prep_out = res["node_outputs"]["prep"]
+    assert (prep_out["width"], prep_out["height"]) == (256, 256)
+    with Image.open(prep_out["path"]) as out_im:
+        assert out_im.size == (256, 256)
+        assert out_im.mode == "RGBA"
+        bbox = out_im.getchannel("A").getbbox()
+        assert bbox is not None
+        cx = (bbox[0] + bbox[2]) / 2.0
+        assert abs(cx - 128.0) < 4.0
+    assert store.get(prep_out["image"]["id"])["parents"] == [res["node_outputs"]["img"]["image"]["id"]]
+
+
+def test_dual_image_to_3d_workflow_runs_both_and_supports_toggles(tmp_path):
+    from pathlib import Path
+    from PIL import Image
+
+    img_path = tmp_path / "sword.png"
+    Image.new("RGBA", (128, 128), (90, 140, 210, 255)).save(img_path)
+
+    wf_file = Path("core/automate/config/gamedev_image_to_3d_dual.json")
+    raw_wf = json.loads(wf_file.read_text(encoding="utf-8"))
+
+    def _patched_wf(run_trellis: bool, run_hunyuan: bool):
+        wf = json.loads(json.dumps(raw_wf))
+        wf["id"] = f"wf_dual_{int(run_trellis)}_{int(run_hunyuan)}"
+        for node in wf["nodes"]:
+            nid = node["id"]
+            if nid == "img":
+                node["properties"]["image"] = str(img_path)
+            elif nid == "prep":
+                node["properties"]["remove_bg"] = False
+                node["properties"]["size"] = "256"
+            elif nid == "tog_trellis":
+                node["properties"]["value"] = run_trellis
+            elif nid == "tog_hunyuan":
+                node["properties"]["value"] = run_hunyuan
+            elif nid in ("gen_trellis", "gen_hunyuan"):
+                node["properties"]["endpoint"] = "demo:mesh"
+        return wf
+
+    # 1. Both enabled -> both normalized meshes & inspection reports produced
+    res_both = WorkflowExecutor(_patched_wf(True, True)).execute()
+    assert res_both["ok"], res_both["node_errors"]
+    assert res_both["node_status"]["norm_trellis"] == "done"
+    assert res_both["node_status"]["norm_hunyuan"] == "done"
+    assert res_both["node_outputs"]["out_trellis_mesh"]["_display"]["kind"] == "mesh"
+    assert res_both["node_outputs"]["out_hunyuan_mesh"]["_display"]["kind"] == "mesh"
+
+    # 2. Only TRELLIS enabled -> Hunyuan branch and its downstream nodes skipped cleanly
+    res_tr = WorkflowExecutor(_patched_wf(True, False)).execute()
+    assert res_tr["ok"], res_tr["node_errors"]
+    assert res_tr["node_status"]["norm_trellis"] == "done"
+    for nid in ("gen_hunyuan", "norm_hunyuan", "check_hunyuan", "out_hunyuan_mesh", "out_hunyuan_report"):
+        assert res_tr["node_status"][nid] == "skipped"
+
+    # 3. Only Hunyuan enabled -> TRELLIS branch and its downstream nodes skipped cleanly
+    res_hy = WorkflowExecutor(_patched_wf(False, True)).execute()
+    assert res_hy["ok"], res_hy["node_errors"]
+    assert res_hy["node_status"]["norm_hunyuan"] == "done"
+    for nid in ("gen_trellis", "norm_trellis", "check_trellis", "out_trellis_mesh", "out_trellis_report"):
+        assert res_hy["node_status"][nid] == "skipped"
+
+
+def test_3d_worker_templates_compile():
+    from pathlib import Path
+
+    tdir = Path("core/interfaces/dashboard/templates")
+    for name in ("trellis2_server.py", "hunyuan3d_server.py", "triposr_server.py"):
+        p = tdir / name
+        assert p.is_file(), f"Missing worker template: {p}"
+        compile(p.read_text(encoding="utf-8"), str(p), "exec")
+
+
+def test_heavy_3d_worker_eviction(monkeypatch):
+    from core.interfaces.dashboard import three_d_routes as r
+
+    class _FakeProc:
+        def __init__(self, alive=True):
+            self.alive = alive
+            self.terminated = False
+
+        def poll(self):
+            return None if self.alive else 0
+
+        def terminate(self):
+            self.terminated = True
+            self.alive = False
+
+    fake_tr = _FakeProc(alive=True)
+    fake_tsr = _FakeProc(alive=True)
+    monkeypatch.setattr(r, "_WORKER_PROCESS", {"trellis-2": fake_tr, "triposr": fake_tsr})
+    monkeypatch.setattr(r, "_WORKER_PORT", {"trellis-2": 9101, "triposr": 9102})
+    monkeypatch.setattr(r.time, "sleep", lambda _s: None)
+
+    stopped = r._evict_other_heavy_workers("hunyuan3d")
+    assert stopped == ["trellis-2"]
+    assert fake_tr.terminated is True
+    assert "trellis-2" not in r._WORKER_PROCESS
+    # Lightweight TripoSR must not be evicted when switching heavy models
+    assert fake_tsr.terminated is False
+    assert "triposr" in r._WORKER_PROCESS

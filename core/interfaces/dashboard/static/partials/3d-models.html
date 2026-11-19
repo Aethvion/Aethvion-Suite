@@ -33,11 +33,11 @@
         </button>
     </div>
 
-    <!-- Trellis 2 Hero Section -->
+    <!-- TRELLIS.2-4B Hero Section -->
     <section class="hub-provider-section">
         <div class="hub-provider-hd">
             <div class="hub-provider-dot" style="--brand-color: var(--primary);"></div>
-            <h2 class="hub-provider-name">State-of-the-Art: Trellis 2 (WIP)</h2>
+            <h2 class="hub-provider-name">Microsoft: TRELLIS.2-4B (PBR)</h2>
         </div>
 
         <div class="hub-grid" style="grid-template-columns: 1fr;">
@@ -49,7 +49,7 @@
                          <i class="fas fa-cube" style="font-size: 6rem; color: var(--primary); opacity: 0.8; filter: drop-shadow(0 0 20px var(--hub-accent-glow));"></i>
                          <div style="margin-top: 1.5rem; display:flex; gap:0.5rem;">
                              <span class="hub-tag" style="background:#818cf8; color:#fff;">SOTA</span>
-                             <span class="hub-tag">STRUCTURED LATENT FLOW</span>
+                             <span class="hub-tag">FULL PBR O-VOXEL</span>
                          </div>
                     </div>
 
@@ -57,33 +57,34 @@
                     <div style="display:flex; flex-direction:column; gap:1.25rem;">
                         <div class="hub-model-info">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <h3 style="font-size: 1.8rem; margin:0;">Trellis 2 (WIP)</h3>
+                                <h3 style="font-size: 1.8rem; margin:0;">TRELLIS.2-4B</h3>
                                 <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span id="trellis2-upgrade-badge" class="hub-tag" style="display:none; background:rgba(251,146,60,0.2); color:#fdba74; border:1px solid rgba(251,146,60,0.4);">Legacy v1 — Repair to Upgrade</span>
                                     <span id="trellis2-compat-badge"></span>
                                     <div id="trellis2-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
                                         <i class="fas fa-power-off"></i> Model Service is Offline
                                     </div>
                                 </div>
                             </div>
-                            <p style="font-size: 1rem; color: var(--text-secondary);">The new standard for high-fidelity 3D reconstruction. Convert a single image into a high-density geometric mesh with verified topology. Optimized for consumer NVIDIA GPUs.</p>
+                            <p style="font-size: 1rem; color: var(--text-secondary);">Microsoft TRELLIS.2-4B (O-Voxel structured flow). Generates crisp geometry, open/complex topologies, and full PBR material maps (Albedo, Metallic, Roughness, Alpha) from a single image.</p>
                         </div>
 
                         <div class="hub-tags">
-                            <span class="hub-tag"><i class="fas fa-memory"></i> 12GB VRAM REQ</span>
-                            <span class="hub-tag"><i class="fas fa-bolt"></i> ~45s INFERENCE</span>
-                            <span class="hub-tag"><i class="fas fa-file-export"></i> .OBJ / .GLB</span>
+                            <span class="hub-tag"><i class="fas fa-memory"></i> 16-24GB VRAM REQ</span>
+                            <span class="hub-tag"><i class="fas fa-bolt"></i> ~45-120s INFERENCE</span>
+                            <span class="hub-tag"><i class="fas fa-layer-group"></i> MIT LICENSE · PBR .GLB</span>
                         </div>
 
                         <div id="trellis2-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
                             <button id="btn-install-full-trellis2" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
-                                <i class="fas fa-hammer"></i> Install Trellis 2 + Weights
+                                <i class="fas fa-hammer"></i> Install TRELLIS.2-4B + Weights
                             </button>
                             <button id="btn-run-trellis2" class="hub-action-btn" style="display:none; width:100%; background:var(--primary); color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
-                                <i class="fas fa-play"></i> Launch Trellis 2
+                                <i class="fas fa-play"></i> Launch TRELLIS.2-4B
                             </button>
                             <div id="trellis2-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
                                 <button id="btn-fix-trellis2" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
-                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair Trellis 2 Installation
+                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair / Upgrade to TRELLIS.2-4B
                                 </button>
                             </div>
                         </div>
@@ -200,6 +201,93 @@
                                 <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">System Logs</span>
                             </div>
                             <pre id="triposr-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Hunyuan3D 2.1 Section -->
+    <section class="hub-provider-section">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: #ec4899;"></div>
+            <h2 class="hub-provider-name">Tencent: Hunyuan3D 2.1 (PBR)</h2>
+        </div>
+
+        <div class="hub-grid" style="grid-template-columns: 1fr;">
+            <div class="hub-card" style="padding: 2rem;">
+                <div style="display:grid; grid-template-columns: 280px 1fr; gap: 2.5rem;">
+
+                    <!-- Preview/Icon Side -->
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid var(--hub-card-border);">
+                         <i class="fas fa-cubes" style="font-size: 6rem; color: #ec4899; opacity: 0.85; filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.3));"></i>
+                         <div style="margin-top: 1.5rem; display:flex; gap:0.5rem;">
+                             <span class="hub-tag" style="background:#ec4899; color:#fff;">GAME-READY</span>
+                             <span class="hub-tag">SHAPE + PBR PAINT</span>
+                         </div>
+                    </div>
+
+                    <!-- Info/Actions Side -->
+                    <div style="display:flex; flex-direction:column; gap:1.25rem;">
+                        <div class="hub-model-info">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 style="font-size: 1.8rem; margin:0;">Hunyuan3D 2.1</h3>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span id="hunyuan3d-compat-badge"></span>
+                                    <div id="hunyuan3d-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                        <i class="fas fa-power-off"></i> Model Service is Offline
+                                    </div>
+                                </div>
+                            </div>
+                            <p style="font-size: 1rem; color: var(--text-secondary);">Watertight game-ready geometry + dedicated multi-view PBR painting (Albedo, Roughness, Metallic, Normal). Staged automatically across Shape and Paint stages to fit cleanly in 24 GB VRAM.</p>
+                        </div>
+
+                        <div class="hub-tags">
+                            <span class="hub-tag"><i class="fas fa-memory"></i> 20-24GB VRAM (STAGED)</span>
+                            <span class="hub-tag"><i class="fas fa-paint-brush"></i> MULTI-VIEW PBR</span>
+                            <span class="hub-tag"><i class="fas fa-file-export"></i> WATERTIGHT .GLB</span>
+                        </div>
+
+                        <div id="hunyuan3d-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
+                            <button id="btn-install-full-hunyuan3d" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
+                                <i class="fas fa-hammer"></i> Install Hunyuan3D 2.1 + Weights
+                            </button>
+                            <button id="btn-run-hunyuan3d" class="hub-action-btn" style="display:none; width:100%; background:#ec4899; color:white; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);">
+                                <i class="fas fa-play"></i> Launch Hunyuan3D 2.1
+                            </button>
+                            <div id="hunyuan3d-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                <button id="btn-fix-hunyuan3d" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
+                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair Hunyuan3D 2.1 Installation
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dual Progress Bars -->
+                        <div id="hunyuan3d-install-progress-container" style="display:none; margin-top: 1rem; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div id="progress-engine-hunyuan3d" style="margin-bottom: 1.25rem;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
+                                    <span id="engine-text-hunyuan3d" style="color:var(--text-tertiary);">1. Environment &amp; CUDA Rasterizer</span>
+                                    <span id="engine-percent-hunyuan3d" style="color:#ec4899; font-weight: 700;">0%</span>
+                                </div>
+                                <div class="model-dl-bar-wrap"><div id="engine-bar-hunyuan3d" class="model-dl-bar" style="width:0%; background:#ec4899; height: 6px;"></div></div>
+                            </div>
+                            <div id="progress-weights-hunyuan3d" style="opacity: 0.4; transition: opacity 0.3s ease;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
+                                    <span id="weights-text-hunyuan3d" style="color:var(--text-tertiary);">2. HuggingFace Model Weights</span>
+                                    <span id="weights-percent-hunyuan3d" style="color:#ec4899; font-weight: 700;">0%</span>
+                                </div>
+                                <div class="model-dl-bar-wrap"><div id="weights-bar-hunyuan3d" class="model-dl-bar" style="width:0%; background:#ec4899; height: 6px;"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- System Log Terminal -->
+                        <div id="hunyuan3d-install-log-container" style="display:none; background:#000; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+                            <div style="background:rgba(255,255,255,0.05); padding:0.5rem 1rem; font-size:0.65rem; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-terminal" style="color:#ec4899; font-size: 0.6rem;"></i>
+                                <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">System Logs</span>
+                            </div>
+                            <pre id="hunyuan3d-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
                         </div>
                     </div>
                 </div>
