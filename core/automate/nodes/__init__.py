@@ -128,6 +128,7 @@ _REGISTRY: dict[str, Callable] = {
     "output.clipboard": inputs_outputs.output_clipboard,
     "output.display":   inputs_outputs.output_display,
     "output.file":      inputs_outputs.output_file,
+    "output.viewer_3d": inputs_outputs.output_viewer_3d,
 
     # UI Custom Interface
     "ui.button":        ui.ui_button,

@@ -133,6 +133,7 @@ NODE_DEPS: dict[str, dict] = {
     "input.list":         {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.display":     {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.file":        {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "output.viewer_3d":   {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.clipboard":   {"pip": ["pyperclip"],                   "keys": [], "aethviondb": False, "ai": False},
     "ui.button":          {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "ui.input_text":      {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},

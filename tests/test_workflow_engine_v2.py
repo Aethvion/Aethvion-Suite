@@ -734,6 +734,7 @@ def test_heavy_3d_worker_eviction(monkeypatch):
 def test_rmtree_force_deletes_readonly_git_pack_files(tmp_path):
     import os
     import stat
+    import subprocess
     from core.interfaces.dashboard import three_d_routes as r
 
     repo_dir = tmp_path / "trellis-2"
@@ -742,9 +743,28 @@ def test_rmtree_force_deletes_readonly_git_pack_files(tmp_path):
     pack_file = pack_dir / "pack-test.pack"
     pack_file.write_bytes(b"PACK")
     os.chmod(pack_file, stat.S_IREAD)
+    if os.name == "nt":
+        subprocess.run(["attrib", "+H", "+R", str(repo_dir / ".git")], capture_output=True, check=False)
 
     r._rmtree_force(repo_dir)
     assert not repo_dir.exists()
+
+
+def test_rmtree_force_renames_aside_stubborn_dir(tmp_path, monkeypatch):
+    import shutil
+    from core.interfaces.dashboard import three_d_routes as r
+
+    stubborn = tmp_path / "trellis-2"
+    (stubborn / ".git").mkdir(parents=True)
+    monkeypatch.setattr(r.shutil, "rmtree", lambda *a, **kw: None)
+    monkeypatch.setattr(r.subprocess, "run", lambda *a, **kw: None)
+    monkeypatch.setattr(r.time, "sleep", lambda _s: None)
+
+    r._rmtree_force(stubborn)
+    assert not stubborn.exists()
+    renamed = list(tmp_path.glob("._old_trellis-2_*"))
+    assert len(renamed) == 1
+    shutil.rmtree(renamed[0], ignore_errors=True)
 
 
 def test_msvc_build_env_sets_zc_preprocessor(monkeypatch):
@@ -806,3 +826,65 @@ def test_patch_custom_rasterizer_msvc(tmp_path):
     assert "data_ptr<int64_t>()" in rs.read_text(encoding="utf-8")
     assert "data_ptr<int64_t>()" in rs_gpu.read_text(encoding="utf-8")
     assert r._patch_custom_rasterizer_msvc(tmp_path) is False
+
+
+def test_asset_file_response_sets_proper_glb_filename_without_doubling(tmp_path):
+    import asyncio
+    from core.assets import asset_routes, store
+
+    rec_dot = store.create_from_bytes(b"glTFtest", ext="glb", kind="mesh", name="model.glb", source={"test": True})
+    rec_raw = store.create_from_bytes(b"glTFtest", ext="glb", kind="mesh", name="mesh", source={"test": True})
+    assert asset_routes._asset_download_filename(rec_dot) == "model.glb"
+    assert asset_routes._asset_download_filename(rec_raw) == "mesh.glb"
+
+    resp_inline = asyncio.run(asset_routes.get_asset_file(rec_dot["id"], download=False))
+    resp_dl = asyncio.run(asset_routes.get_asset_file(rec_dot["id"], download=True))
+    assert resp_inline.filename == "model.glb"
+    assert 'filename="model.glb"' in resp_inline.headers.get("content-disposition", "")
+    assert resp_inline.headers.get("content-disposition", "").startswith("inline")
+    assert resp_dl.filename == "model.glb"
+    assert resp_dl.headers.get("content-disposition", "").startswith("attachment")
+
+
+def test_image_prep_3d_opaque_without_rembg_stays_rgb(tmp_path, monkeypatch):
+    import sys
+    from PIL import Image
+    from core.automate.nodes import models as m
+
+    src_path = tmp_path / "opaque.jpg"
+    Image.new("RGB", (200, 120), (40, 90, 160)).save(src_path)
+
+    monkeypatch.setitem(sys.modules, "rembg", None)
+    monkeypatch.setattr(m, "_remove_bg_via_3d_venv", lambda _b: (None, "unavailable"))
+
+    wf = _wf(
+        [
+            _n("t", "trigger.manual"),
+            _n("img", "input.image", image=str(src_path)),
+            _n("prep", "image.prep_3d", remove_bg=True, size="256", padding_ratio=0.12, background="transparent"),
+        ],
+        [_trig("prep"), _c("img", "image", "prep", "image")],
+    )
+    res = WorkflowExecutor(wf).execute()
+    assert res["ok"], res["node_errors"]
+    prep_out = res["node_outputs"]["prep"]
+    with Image.open(prep_out["path"]) as out_im:
+        assert out_im.size == (256, 256)
+        assert out_im.mode == "RGB"
+
+
+def test_output_viewer_3d_node_passes_through_mesh():
+    wf = _wf(
+        [
+            _n("t", "trigger.manual"),
+            _n("demo", "model3d.generate", endpoint="demo:mesh", prompt="shield"),
+            _n("view", "output.viewer_3d", lighting="studio", shading="normal", auto_rotate=False),
+        ],
+        [_trig("demo"), _c("demo", "mesh", "view", "mesh")],
+    )
+    res = WorkflowExecutor(wf).execute()
+    assert res["ok"], res["node_errors"]
+    vout = res["node_outputs"]["view"]
+    assert vout["mesh"]["kind"] == "mesh"
+    assert vout["_viewer_3d"]["id"] == vout["mesh"]["id"]
+    assert vout["_display"]["id"] == vout["mesh"]["id"]

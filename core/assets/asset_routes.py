@@ -60,13 +60,26 @@ async def get_asset(asset_id: str):
     }
 
 
+def _asset_download_filename(rec: dict) -> str:
+    """Return a clean filename without duplicating the extension."""
+    name = str(rec.get("name") or rec["id"]).strip() or rec["id"]
+    ext = str(rec.get("ext") or "").lstrip(".")
+    if ext and not name.lower().endswith(f".{ext.lower()}"):
+        return f"{name}.{ext}"
+    return name
+
+
 @router.get("/{asset_id}/file")
 async def get_asset_file(asset_id: str, download: bool = False):
     rec = store.get(asset_id)
     if not rec or not Path(rec["path"]).is_file():
         raise HTTPException(404, "Asset file not found")
-    filename = f"{rec['name']}.{rec['ext']}" if download else None
-    return FileResponse(rec["path"], media_type=rec["mime"], filename=filename)
+    return FileResponse(
+        rec["path"],
+        media_type=rec["mime"],
+        filename=_asset_download_filename(rec),
+        content_disposition_type="attachment" if download else "inline",
+    )
 
 
 class AssetUpdate(BaseModel):

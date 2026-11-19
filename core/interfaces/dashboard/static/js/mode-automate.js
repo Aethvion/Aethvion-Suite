@@ -1032,14 +1032,273 @@
     var _ASSET_ICONS = { image: 'fa-image', mesh: 'fa-cube', audio: 'fa-volume-high', video: 'fa-film',
                          text: 'fa-file-lines', json: 'fa-file-code', file: 'fa-file' };
 
+    var _ThreeDViewerPromise = null;
+    var _inline3DViewers = Object.create(null);
+    var _modal3DViewer = null;
+    var _modal3DEscHandler = null;
+
+    function _assetFilename(ref) {
+        var base = String((ref && (ref.name || ref.id)) || 'asset').trim() || 'asset';
+        var ext = String((ref && ref.ext) || '').replace(/^\.+/, '');
+        if (ext && !base.toLowerCase().endsWith('.' + ext.toLowerCase())) {
+            return base + '.' + ext;
+        }
+        return base;
+    }
+
+    function _getThreeDViewerClass() {
+        if (!_ThreeDViewerPromise) {
+            _ThreeDViewerPromise = import('/static/js/3d-viewer.js').then(function (m) {
+                return m.ThreeDViewer;
+            });
+        }
+        return _ThreeDViewerPromise;
+    }
+
+    function _disposeInline3DViewer(nodeId) {
+        if (_inline3DViewers[nodeId]) {
+            try { _inline3DViewers[nodeId].dispose(); } catch (_) {}
+            delete _inline3DViewers[nodeId];
+        }
+    }
+
+    function _disposeAll3DViewers() {
+        Object.keys(_inline3DViewers).forEach(_disposeInline3DViewer);
+    }
+
+    function _applyViewerPreset(viewer, lighting, shading) {
+        if (!viewer) return;
+        try { viewer.setLightingPreset(lighting || 'studio'); } catch (_) {}
+        try { viewer.setShadingMode(shading || 'normal'); } catch (_) {}
+    }
+
+    function _open3DViewerModal(ref) {
+        if (!ref || !ref.url) return;
+        var existing = document.getElementById('at-3d-modal');
+        if (existing) {
+            if (_modal3DViewer) {
+                try { _modal3DViewer.dispose(); } catch (_) {}
+                _modal3DViewer = null;
+            }
+            existing.remove();
+        }
+        if (_modal3DEscHandler) {
+            document.removeEventListener('keydown', _modal3DEscHandler);
+            _modal3DEscHandler = null;
+        }
+
+        var fname = _assetFilename(ref);
+        var modal = document.createElement('div');
+        modal.id = 'at-3d-modal';
+        modal.className = 'at-3d-modal';
+        modal.innerHTML =
+            '<div class="at-3d-modal-dialog">' +
+            '  <div class="at-3d-modal-hdr">' +
+            '    <div class="at-3d-modal-title"><i class="fas fa-cube"></i><span>' + _esc(fname) + '</span></div>' +
+            '    <div class="at-3d-modal-hdr-actions">' +
+            '      <a class="at-3d-modal-dl" href="' + _esc(ref.url + '?download=1') + '" download="' + _esc(fname) + '">' +
+            '        <i class="fas fa-download"></i> Download .glb' +
+            '      </a>' +
+            '      <button type="button" class="at-3d-modal-close" title="Close (Esc)"><i class="fas fa-xmark"></i></button>' +
+            '    </div>' +
+            '  </div>' +
+            '  <div class="at-3d-modal-stage">' +
+            '    <div class="at-3d-modal-canvas"></div>' +
+            '    <div class="at-viewer3d-status">Loading 3D model…</div>' +
+            '  </div>' +
+            '  <div class="at-3d-modal-bar">' +
+            '    <label>Lighting ' +
+            '      <select data-m3d-light>' +
+            '        <option value="studio">Studio</option>' +
+            '        <option value="dramatic">Dramatic</option>' +
+            '        <option value="outdoor">Outdoor</option>' +
+            '        <option value="none">Flat</option>' +
+            '      </select>' +
+            '    </label>' +
+            '    <label>Shading ' +
+            '      <select data-m3d-shade>' +
+            '        <option value="normal">Solid</option>' +
+            '        <option value="solid-wire">Solid + Wire</option>' +
+            '        <option value="wireframe">Wireframe</option>' +
+            '      </select>' +
+            '    </label>' +
+            '    <label>Exposure <input type="range" min="0.4" max="2.2" step="0.05" value="1.0" data-m3d-exp></label>' +
+            '    <button type="button" class="at-v3d-btn active" data-m3d-floor>Floor</button>' +
+            '    <button type="button" class="at-v3d-btn" data-m3d-spin>Spin</button>' +
+            '    <button type="button" class="at-v3d-btn" data-m3d-reset>Reset View</button>' +
+            '  </div>' +
+            '</div>';
+        document.body.appendChild(modal);
+
+        function _close() {
+            if (_modal3DEscHandler) {
+                document.removeEventListener('keydown', _modal3DEscHandler);
+                _modal3DEscHandler = null;
+            }
+            if (_modal3DViewer) {
+                try { _modal3DViewer.dispose(); } catch (_) {}
+                _modal3DViewer = null;
+            }
+            modal.remove();
+        }
+        _modal3DEscHandler = function (e) { if (e.key === 'Escape') _close(); };
+        document.addEventListener('keydown', _modal3DEscHandler);
+        modal.querySelector('.at-3d-modal-close').addEventListener('click', _close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) _close(); });
+
+        var canvasHost = modal.querySelector('.at-3d-modal-canvas');
+        var statusEl = modal.querySelector('.at-viewer3d-status');
+        var lightSel = modal.querySelector('[data-m3d-light]');
+        var shadeSel = modal.querySelector('[data-m3d-shade]');
+        var expRange = modal.querySelector('[data-m3d-exp]');
+        var floorBtn = modal.querySelector('[data-m3d-floor]');
+        var spinBtn  = modal.querySelector('[data-m3d-spin]');
+        var resetBtn = modal.querySelector('[data-m3d-reset]');
+        var floorOn  = true;
+        var spinOn   = false;
+
+        _getThreeDViewerClass().then(function (ThreeDViewer) {
+            if (!modal.isConnected) return;
+            var viewer = new ThreeDViewer(canvasHost, { compact: false, stopPropagation: false, autoRotate: false });
+            _modal3DViewer = viewer;
+            canvasHost.addEventListener('viewer-loaded', function () {
+                if (statusEl) statusEl.style.display = 'none';
+            });
+            canvasHost.addEventListener('viewer-error', function () {
+                if (statusEl) {
+                    statusEl.textContent = 'Failed to load 3D model.';
+                    statusEl.classList.add('is-error');
+                }
+            });
+            lightSel.addEventListener('change', function () { viewer.setLightingPreset(lightSel.value); });
+            shadeSel.addEventListener('change', function () { viewer.setShadingMode(shadeSel.value); });
+            expRange.addEventListener('input', function () { viewer.setLightIntensity(expRange.value); });
+            floorBtn.addEventListener('click', function () {
+                floorOn = !floorOn;
+                floorBtn.classList.toggle('active', floorOn);
+                viewer.toggleFloor(floorOn);
+            });
+            spinBtn.addEventListener('click', function () {
+                spinOn = !spinOn;
+                spinBtn.classList.toggle('active', spinOn);
+                viewer.setAutoRotate(spinOn);
+            });
+            resetBtn.addEventListener('click', function () { viewer.resetCamera(); });
+            viewer.loadModel(ref.url).catch(function () {});
+        }).catch(function (err) {
+            if (statusEl) {
+                statusEl.textContent = '3D viewer unavailable: ' + err.message;
+                statusEl.classList.add('is-error');
+            }
+        });
+    }
+
+    function _renderViewer3DCard(nodeId, nd, val) {
+        var wrap = _e.canvasInner && _e.canvasInner.querySelector('[data-node-result="' + nodeId + '"]');
+        var body = wrap && wrap.querySelector('[data-node-result-body="' + nodeId + '"]');
+        if (!wrap || !body) return;
+
+        var ref = _firstAssetRef(val);
+        if (!ref || !ref.url) {
+            _disposeInline3DViewer(nodeId);
+            _showDisplayOutput(nodeId, val);
+            return;
+        }
+
+        _disposeInline3DViewer(nodeId);
+        var fname = _assetFilename(ref);
+        var props = (nd && nd.properties) || {};
+        var lights = ['studio', 'dramatic', 'outdoor', 'none'];
+        var shades = ['normal', 'solid-wire', 'wireframe'];
+        var curLight = lights.indexOf(props.lighting || 'studio') >= 0 ? (props.lighting || 'studio') : 'studio';
+        var curShade = shades.indexOf(props.shading || 'normal') >= 0 ? (props.shading || 'normal') : 'normal';
+        var autoRotate = !!props.auto_rotate;
+
+        body.innerHTML = '';
+        var card = document.createElement('div');
+        card.className = 'at-viewer3d-wrap';
+        card.innerHTML =
+            '<div class="at-viewer3d-host">' +
+            '  <div class="at-viewer3d-status">Loading 3D preview…</div>' +
+            '</div>' +
+            '<div class="at-viewer3d-bar">' +
+            '  <button type="button" class="at-v3d-btn" data-v3d-light title="Cycle lighting preset"><i class="fas fa-sun"></i> <span>' + _esc(curLight) + '</span></button>' +
+            '  <button type="button" class="at-v3d-btn" data-v3d-shade title="Cycle shading mode"><i class="fas fa-border-all"></i> <span>' + _esc(curShade === 'normal' ? 'solid' : curShade) + '</span></button>' +
+            '  <button type="button" class="at-v3d-btn" data-v3d-reset title="Reset camera"><i class="fas fa-crosshairs"></i></button>' +
+            '  <button type="button" class="at-v3d-btn" data-v3d-expand title="Open full 3D viewer"><i class="fas fa-expand"></i></button>' +
+            '  <a class="at-v3d-btn at-v3d-dl" href="' + _esc(ref.url + '?download=1') + '" download="' + _esc(fname) + '" title="Download ' + _esc(fname) + '"><i class="fas fa-download"></i> .glb</a>' +
+            '</div>';
+        body.appendChild(card);
+        wrap.style.display = '';
+
+        var hostEl = card.querySelector('.at-viewer3d-host');
+        var statusEl = card.querySelector('.at-viewer3d-status');
+        var barEl = card.querySelector('.at-viewer3d-bar');
+        ['mousedown', 'pointerdown', 'wheel'].forEach(function (ev) {
+            hostEl.addEventListener(ev, function (e) { e.stopPropagation(); });
+            barEl.addEventListener(ev, function (e) { e.stopPropagation(); });
+        });
+
+        _getThreeDViewerClass().then(function (ThreeDViewer) {
+            if (!hostEl.isConnected) return;
+            _disposeInline3DViewer(nodeId);
+            var viewer = new ThreeDViewer(hostEl, { compact: true, stopPropagation: true, autoRotate: autoRotate });
+            _inline3DViewers[nodeId] = viewer;
+            _applyViewerPreset(viewer, curLight, curShade);
+
+            hostEl.addEventListener('viewer-loaded', function () {
+                if (statusEl) statusEl.style.display = 'none';
+                viewer.onResize();
+            });
+            hostEl.addEventListener('viewer-error', function () {
+                if (statusEl) {
+                    statusEl.textContent = 'Could not load GLB';
+                    statusEl.classList.add('is-error');
+                }
+            });
+
+            var lightBtn = barEl.querySelector('[data-v3d-light]');
+            var shadeBtn = barEl.querySelector('[data-v3d-shade]');
+            lightBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                curLight = lights[(lights.indexOf(curLight) + 1) % lights.length];
+                lightBtn.querySelector('span').textContent = curLight;
+                viewer.setLightingPreset(curLight);
+            });
+            shadeBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                curShade = shades[(shades.indexOf(curShade) + 1) % shades.length];
+                shadeBtn.querySelector('span').textContent = curShade === 'normal' ? 'solid' : curShade;
+                viewer.setShadingMode(curShade);
+            });
+            barEl.querySelector('[data-v3d-reset]').addEventListener('click', function (e) {
+                e.stopPropagation();
+                viewer.resetCamera();
+            });
+            barEl.querySelector('[data-v3d-expand]').addEventListener('click', function (e) {
+                e.stopPropagation();
+                _open3DViewerModal(ref);
+            });
+
+            requestAnimationFrame(function () { viewer.onResize(); });
+            viewer.loadModel(ref.url).catch(function () {});
+        }).catch(function (err) {
+            if (statusEl) {
+                statusEl.textContent = '3D viewer error: ' + err.message;
+                statusEl.classList.add('is-error');
+            }
+        });
+    }
+
     function _assetPreviewEl(ref) {
         var wrap = document.createElement('div');
         wrap.className = 'at-asset-preview at-asset-' + ref.kind;
+        var fname = _assetFilename(ref);
         if (ref.kind === 'image') {
             var img = document.createElement('img');
             img.className = 'at-node-result-img';
             img.src = ref.url;
-            img.alt = ref.name || 'image';
+            img.alt = fname;
             wrap.appendChild(img);
         } else if (ref.kind === 'audio') {
             var au = document.createElement('audio');
@@ -1048,17 +1307,42 @@
             au.style.width = '100%';
             wrap.appendChild(au);
         }
+
+        var isDownloadable = (ref.kind === 'mesh' || ref.kind === 'file');
         var chip = document.createElement('a');
         chip.className = 'at-asset-chip';
-        chip.href = ref.url;
-        chip.target = '_blank';
-        chip.rel = 'noopener';
-        chip.title = 'Open ' + (ref.name || ref.id) + '.' + (ref.ext || '') + '  (' + ref.id + ')';
+        chip.href = isDownloadable ? (ref.url + '?download=1') : ref.url;
+        if (isDownloadable) {
+            chip.setAttribute('download', fname);
+        } else {
+            chip.target = '_blank';
+            chip.rel = 'noopener';
+        }
+        chip.title = (isDownloadable ? 'Download ' : 'Open ') + fname + ' (' + ref.id + ')';
         chip.innerHTML = '<i class="fas ' + (_ASSET_ICONS[ref.kind] || 'fa-file') + '"></i>' +
-            '<span>' + _esc((ref.name || ref.id) + (ref.ext ? '.' + ref.ext : '')) + '</span>' +
-            '<em>' + _esc(ref.kind) + '</em>';
+            '<span>' + _esc(fname) + '</span>' +
+            '<em>' + _esc(isDownloadable ? 'download' : ref.kind) + '</em>';
         chip.addEventListener('mousedown', function (e) { e.stopPropagation(); });
-        wrap.appendChild(chip);
+
+        if (ref.kind === 'mesh') {
+            var actions = document.createElement('div');
+            actions.className = 'at-asset-actions';
+            var viewBtn = document.createElement('button');
+            viewBtn.type = 'button';
+            viewBtn.className = 'at-asset-3d-btn';
+            viewBtn.innerHTML = '<i class="fas fa-cube"></i> View 3D';
+            viewBtn.title = 'Inspect ' + fname + ' in 3D viewer';
+            viewBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+            viewBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                _open3DViewerModal(ref);
+            });
+            actions.appendChild(viewBtn);
+            actions.appendChild(chip);
+            wrap.appendChild(actions);
+        } else {
+            wrap.appendChild(chip);
+        }
         return wrap;
     }
 
@@ -1303,6 +1587,10 @@
             if (nd.type === 'output.display') {
                 var val = outs._display !== undefined ? outs._display : outs.out;
                 _showDisplayOutput(nodeId, val);
+            }
+            if (nd.type === 'output.viewer_3d') {
+                var vVal = outs._viewer_3d !== undefined ? outs._viewer_3d : (outs.mesh !== undefined ? outs.mesh : outs._display);
+                _renderViewer3DCard(nodeId, nd, vVal);
             }
             // Screenshot / camera_capture — show image preview on the node card
             if ((nd.type === 'action.screenshot' || nd.type === 'action.camera_capture') && outs.image) {
@@ -2357,6 +2645,7 @@
     //  Canvas / node rendering
 
     function _renderCanvas() {
+        _disposeAll3DViewers();
         // Remove old node elements (keep SVG)
         Array.from(_e.canvasInner.children).forEach(function (c) {
             if (c !== _e.svg) c.remove();
@@ -2451,13 +2740,16 @@
 
         const isAI        = nd.type.startsWith('ai.');
         const isDisplay   = nd.type === 'output.display';
+        const isViewer3D  = nd.type === 'output.viewer_3d';
         const isCapture   = nd.type === 'action.screenshot' || nd.type === 'action.camera_capture';
         const isSchedule  = nd.type === 'trigger.schedule';
         const isTextInput = nd.type === 'input.text' || nd.type === 'input.number' || nd.type === 'input.list';
         const isGlobal    = nd.type && nd.type.startsWith('global.');
         const isTrigger   = nd.type.startsWith('trigger.');
         const isAssetNode = _ASSET_NODE_RE.test(nd.type);   // model / asset / flow nodes
-        const showResult  = (isAI && nd.properties['show_result'] !== false) || isDisplay;
+        const showResult  = (isAI && nd.properties['show_result'] !== false) || isDisplay || isViewer3D;
+
+        if (isViewer3D) el.classList.add('at-node-viewer3d');
 
         // AI extra bar: model badge + test button
         const aiBarHtml = isAI
@@ -2473,11 +2765,11 @@
 
         // Result panel — hidden until test/execution returns data
         // Also shown for screenshot / camera_capture so the image preview appears on the node card
-        const resultHtml = (isAI || isDisplay || isCapture || isAssetNode)
+        const resultHtml = (isAI || isDisplay || isViewer3D || isCapture || isAssetNode)
             ? '<div class="at-node-result" data-node-result="' + nd.id + '" style="display:none">' +
               '  <div class="at-node-result-hdr">' +
-              '    <span><i class="fas fa-' + (isCapture ? 'image' : (isAssetNode ? 'cube' : 'sparkles')) + '"></i> ' +
-                       (isCapture ? 'Preview' : 'Result') + '</span>' +
+              '    <span><i class="fas fa-' + (isCapture ? 'image' : ((isAssetNode || isViewer3D) ? 'cube' : 'sparkles')) + '"></i> ' +
+                       (isCapture ? 'Preview' : (isViewer3D ? '3D Viewer' : 'Result')) + '</span>' +
               '    <button class="at-node-result-close" data-close-result="' + nd.id + '">✕</button>' +
               '  </div>' +
               '  <div class="at-node-result-body" data-node-result-body="' + nd.id + '"></div>' +
@@ -3431,6 +3723,7 @@
         _active.connections = _active.connections.filter(function (c) {
             return c.sourceNodeId !== nodeId && c.targetNodeId !== nodeId;
         });
+        _disposeInline3DViewer(nodeId);
         const el = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
         if (el) el.remove();
         if (_selNodeId === nodeId) { _selNodeId = null; _closeProps(); }
@@ -5983,6 +6276,7 @@
             if (closeResult) {
                 e.stopPropagation();
                 const nid = closeResult.dataset.closeResult;
+                _disposeInline3DViewer(nid);
                 const wrap = _e.canvasInner.querySelector('[data-node-result="' + nid + '"]');
                 if (wrap) wrap.style.display = 'none';
                 return;

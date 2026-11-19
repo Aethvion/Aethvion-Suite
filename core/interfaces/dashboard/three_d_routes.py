@@ -699,24 +699,58 @@ print('Download complete.')
     )
 
 def _rmtree_force(path: Path) -> None:
-    """Recursively remove *path*, clearing Windows read-only attributes (e.g. git pack files)."""
+    """Recursively remove *path*, clearing Windows read-only/hidden/system attributes."""
     p = Path(path)
     if not p.exists():
         return
 
     def _on_rm_error(func, target_path, _exc):
+        for candidate in (target_path, os.path.dirname(target_path)):
+            if not candidate:
+                continue
+            try:
+                os.chmod(candidate, stat.S_IWRITE | stat.S_IREAD)
+            except OSError:
+                pass
         try:
-            os.chmod(target_path, stat.S_IWRITE)
             func(target_path)
         except OSError:
             pass
 
-    shutil.rmtree(p, onerror=_on_rm_error)
-    if p.exists():
-        # Final fallback via cmd rmdir /s /q on Windows
+    if os.name == "nt":
+        for target_spec in (str(p / "*"), str(p)):
+            subprocess.run(
+                ["attrib", "-R", "-H", "-S", "/S", "/D", target_spec],
+                capture_output=True, text=True, check=False,
+            )
+
+    for attempt in range(5):
+        shutil.rmtree(p, onerror=_on_rm_error)
+        if not p.exists():
+            return
         if os.name == "nt":
-            subprocess.run(["cmd", "/c", "rmdir", "/s", "/q", str(p)],
-                           capture_output=True, text=True, check=False)
+            subprocess.run(
+                ["cmd", "/c", "rmdir", "/s", "/q", str(p)],
+                capture_output=True, text=True, check=False,
+            )
+            if not p.exists():
+                return
+        time.sleep(0.25 * (attempt + 1))
+
+    if p.exists():
+        aside = p.parent / f"._old_{p.name}_{uuid.uuid4().hex[:8]}"
+        try:
+            os.replace(p, aside)
+            if os.name == "nt":
+                subprocess.run(
+                    ["cmd", "/c", "rmdir", "/s", "/q", str(aside)],
+                    capture_output=True, text=True, check=False,
+                )
+            else:
+                shutil.rmtree(aside, ignore_errors=True)
+        except OSError:
+            pass
+
     if p.exists():
         raise RuntimeError(f"Could not completely remove directory: {p}")
 
@@ -933,10 +967,23 @@ async def install_3d_model(model: str):
 
     async def _generate():
         try:
+            # Stop any running worker first so it releases locks inside repo_dir / venv
+            if model in _WORKER_PROCESS:
+                yield _sse(f"Stopping running {model} worker process...")
+                await asyncio.to_thread(_stop_worker_process, model)
+
             # Remove any stale completion marker so a failed repair never leaves it valid
             install_file.unlink(missing_ok=True)
 
-            # 1. Force-clean repo_dir (clearing Windows read-only .git pack files)
+            # Sweep any leftover renamed folders from earlier locked repairs
+            if wrapper_dir.exists():
+                for stale in wrapper_dir.glob("._old_*"):
+                    try:
+                        await asyncio.to_thread(_rmtree_force, stale)
+                    except Exception:
+                        pass
+
+            # 1. Force-clean repo_dir (clearing Windows read-only/hidden .git files)
             if repo_dir.exists():
                 yield _sse(f"Cleaning previous {model} source directory...")
                 await asyncio.to_thread(_rmtree_force, repo_dir)

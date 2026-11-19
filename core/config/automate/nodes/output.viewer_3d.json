@@ -1,0 +1,44 @@
+{
+  "type": "output.viewer_3d",
+  "label": "3D Viewer",
+  "category": "Outputs",
+  "icon": "fa-cube",
+  "color": "#38bdf8",
+  "description": "Interactive Three.js PBR 3D viewer for GLB/GLTF meshes right on the canvas, with lighting, wireframe, and fullscreen modal controls.",
+  "inputs": [
+    {
+      "name": "mesh",
+      "label": "3D Model",
+      "description": "GLB/GLTF mesh asset to inspect in 3D."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "mesh",
+      "label": "3D Model",
+      "description": "Pass-through mesh asset for downstream nodes."
+    }
+  ],
+  "properties": [
+    {
+      "key": "lighting",
+      "label": "Lighting Preset",
+      "type": "select",
+      "default": "studio",
+      "options": ["studio", "dramatic", "outdoor", "none"]
+    },
+    {
+      "key": "shading",
+      "label": "Shading Mode",
+      "type": "select",
+      "default": "normal",
+      "options": ["normal", "solid-wire", "wireframe"]
+    },
+    {
+      "key": "auto_rotate",
+      "label": "Auto-Rotate",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

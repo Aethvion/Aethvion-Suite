@@ -178,6 +178,42 @@ def _is_enabled(inputs: dict, p: dict) -> bool:
 
 # image.prep_3d — clean background removal, tight crop & square padding for 3D generation
 
+def _remove_bg_via_3d_venv(img_bytes: bytes) -> tuple[bytes | None, str]:
+    """Run rembg inside an installed 3D worker venv when the host env lacks rembg."""
+    import subprocess  # noqa: PLC0415
+    import sys         # noqa: PLC0415
+    import tempfile    # noqa: PLC0415
+    from core.utils.paths import LOCAL_MODELS_3D  # noqa: PLC0415
+
+    py_rel = Path("venv") / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    script = (
+        "import sys; from PIL import Image; import rembg; "
+        "rembg.remove(Image.open(sys.argv[1])).convert('RGBA').save(sys.argv[2], 'PNG')"
+    )
+    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    last_err = "no 3D venv with rembg installed"
+    for sub in ("hunyuan3d", "trellis2", "triposr"):
+        py_exe = LOCAL_MODELS_3D / sub / py_rel
+        if not py_exe.is_file():
+            continue
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                in_p = Path(tmpdir) / "in.png"
+                out_p = Path(tmpdir) / "out.png"
+                in_p.write_bytes(img_bytes)
+                proc = subprocess.run(
+                    [str(py_exe), "-c", script, str(in_p), str(out_p)],
+                    capture_output=True, text=True, timeout=120, creationflags=flags,
+                )
+                if proc.returncode == 0 and out_p.is_file() and out_p.stat().st_size > 0:
+                    return out_p.read_bytes(), sub
+                tail = (proc.stderr or proc.stdout or f"exit {proc.returncode}").strip().splitlines()
+                last_err = f"{sub}: {tail[-1]}" if tail else f"{sub}: exit {proc.returncode}"
+        except Exception as exc:  # noqa: BLE001
+            last_err = f"{sub}: {exc}"
+    return None, last_err
+
+
 def image_prep_3d(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     from core.assets import store, values  # noqa: PLC0415
     from PIL import Image                # noqa: PLC0415
@@ -209,19 +245,31 @@ def image_prep_3d(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
 
     ext = im.getchannel("A").getextrema()
     has_transparency = bool(ext and ext[0] < 250)
+    bg_removed = has_transparency
     if remove_bg and not has_transparency:
         try:
             import rembg  # noqa: PLC0415
             im = rembg.remove(im).convert("RGBA")
+            bg_removed = True
         except Exception as exc:  # noqa: BLE001
-            ctx._warn(f"    Background removal skipped ({exc}); using padded crop as-is.")
+            cut_bytes, bg_src = _remove_bg_via_3d_venv(media[0])
+            if cut_bytes:
+                im = Image.open(io.BytesIO(cut_bytes)).convert("RGBA")
+                bg_removed = True
+                ctx._info(f"    Background removed via {bg_src} rembg.")
+            else:
+                ctx._warn(
+                    f"    Background removal skipped ({exc}; 3D venv fallback: {bg_src}); "
+                    "keeping opaque canvas so 3D worker runs segmentation."
+                )
 
-    alpha = im.getchannel("A")
-    a_ext = alpha.getextrema()
-    if a_ext and a_ext[0] < 250:
-        bbox = alpha.getbbox()
-        if bbox:
-            im = im.crop(bbox)
+    if bg_removed:
+        alpha = im.getchannel("A")
+        a_ext = alpha.getextrema()
+        if a_ext and a_ext[0] < 250:
+            bbox = alpha.getbbox()
+            if bbox:
+                im = im.crop(bbox)
 
     inner = max(16, int(round(target_size * (1.0 - 2.0 * padding_ratio))))
     w, h = im.size
@@ -232,11 +280,16 @@ def image_prep_3d(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.LANCZOS)
         im = im.resize((new_w, new_h), resample)
 
-    bg_color = (255, 255, 255, 255) if bg_mode == "white" else (0, 0, 0, 0)
-    canvas = Image.new("RGBA", (target_size, target_size), bg_color)
     ox = (target_size - im.width) // 2
     oy = (target_size - im.height) // 2
-    canvas.paste(im, (ox, oy), im)
+    if bg_removed:
+        bg_color = (255, 255, 255, 255) if bg_mode == "white" else (0, 0, 0, 0)
+        canvas = Image.new("RGBA", (target_size, target_size), bg_color)
+        canvas.paste(im, (ox, oy), im)
+    else:
+        # Keep opaque RGB so downstream 3D workers still run their own background remover
+        canvas = Image.new("RGB", (target_size, target_size), (255, 255, 255))
+        canvas.paste(im.convert("RGB"), (ox, oy))
 
     out_buf = io.BytesIO()
     canvas.save(out_buf, format="PNG")

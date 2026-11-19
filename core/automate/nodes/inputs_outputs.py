@@ -83,6 +83,12 @@ def output_display(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"_display": inputs.get("in", "")}
 
 
+def output_viewer_3d(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """Pass through a 3D mesh asset and mark it for inline Three.js PBR viewing."""
+    val = inputs.get("mesh") if inputs.get("mesh") is not None else inputs.get("in")
+    return {"mesh": val, "_viewer_3d": val, "_display": val}
+
+
 def output_file(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p        = node.get("properties", {})
     in_val   = inputs.get("in", "")
