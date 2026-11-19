@@ -5,6 +5,8 @@ API endpoints for 3D model generation and asset management.
 
 import base64
 import shutil
+import stat
+import sys
 import threading
 import time
 import uuid
@@ -696,10 +698,35 @@ print('Download complete.')
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+def _rmtree_force(path: Path) -> None:
+    """Recursively remove *path*, clearing Windows read-only attributes (e.g. git pack files)."""
+    p = Path(path)
+    if not p.exists():
+        return
+
+    def _on_rm_error(func, target_path, _exc):
+        try:
+            os.chmod(target_path, stat.S_IWRITE)
+            func(target_path)
+        except OSError:
+            pass
+
+    shutil.rmtree(p, onerror=_on_rm_error)
+    if p.exists():
+        # Final fallback via cmd rmdir /s /q on Windows
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "rmdir", "/s", "/q", str(p)],
+                           capture_output=True, text=True, check=False)
+    if p.exists():
+        raise RuntimeError(f"Could not completely remove directory: {p}")
+
+
 def _msvc_build_env() -> tuple[dict, str]:
     """Build an environment dict populated with MSVC x64 toolchain + CUDA arch list on Windows."""
     env = dict(os.environ)
     env["TORCH_CUDA_ARCH_LIST"] = "8.0;8.6;8.9+PTX"
+    env["DISTUTILS_USE_SDK"] = "1"
+    env.setdefault("MAX_JOBS", "4")
     note = ""
     try:
         vswhere_path = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -721,6 +748,14 @@ def _msvc_build_env() -> tuple[dict, str]:
                 note = "MSVC environment configured."
     except Exception as exc:
         note = f"Warning: MSVC setup failed: {exc}"
+    # CUDA 13+ CCCL requires MSVC's conforming preprocessor (/Zc:preprocessor)
+    if sys.platform == "win32":
+        existing_cl = env.get("CL", "")
+        if "/Zc:preprocessor" not in existing_cl:
+            env["CL"] = f"{existing_cl} /Zc:preprocessor".strip()
+        existing_nvcc = env.get("NVCC_PREPEND_FLAGS", "")
+        if "/Zc:preprocessor" not in existing_nvcc:
+            env["NVCC_PREPEND_FLAGS"] = f"{existing_nvcc} -Xcompiler=/Zc:preprocessor".strip()
     return env, note
 
 
@@ -741,6 +776,79 @@ def _relax_torch_cuda_check(venv_dir: Path) -> bool:
     except Exception:
         pass
     return False
+
+
+def _apply_source_patches(patches: tuple[tuple[Path, tuple[tuple[str, str], ...]], ...]) -> bool:
+    """Apply idempotent literal text replacements to extension source files; returns True if any changed."""
+    changed = False
+    for target, replacements in patches:
+        if not target.exists():
+            continue
+        try:
+            src = target.read_text(encoding="utf-8")
+            patched = src
+            for old, new in replacements:
+                patched = patched.replace(old, new)
+            if patched != src:
+                target.write_text(patched, encoding="utf-8")
+                changed = True
+        except Exception:
+            pass
+    return changed
+
+
+def _patch_ovoxel_msvc(ovoxel_dir: Path) -> bool:
+    """Fix GCC-only suffixes and size_t narrowing in o-voxel sources so MSVC compiles cleanly."""
+    patches = (
+        (
+            ovoxel_dir / "src" / "convert" / "flexible_dual_grid.cpp",
+            (("1e-6d", "1e-6"), ("0.0d", "0.0")),
+        ),
+        (
+            ovoxel_dir / "src" / "io" / "svo.cpp",
+            (
+                ("{svo.size()}", "{static_cast<int64_t>(svo.size())}"),
+                ("{codes.size()}", "{static_cast<int64_t>(codes.size())}"),
+            ),
+        ),
+        (
+            ovoxel_dir / "src" / "io" / "filter_parent.cpp",
+            (("{N_leaf, C}", "{static_cast<int64_t>(N_leaf), static_cast<int64_t>(C)}"),),
+        ),
+        (
+            ovoxel_dir / "src" / "io" / "filter_neighbor.cpp",
+            (("{N, C}", "{static_cast<int64_t>(N), static_cast<int64_t>(C)}"),),
+        ),
+    )
+    return _apply_source_patches(patches)
+
+
+def _patch_custom_rasterizer_msvc(cr_dir: Path) -> bool:
+    """Fix size_t narrowing and Win64 32-bit long pointers in custom_rasterizer for MSVC."""
+    kdir = cr_dir / "lib" / "custom_rasterizer_kernel"
+    patches = (
+        (
+            kdir / "grid_neighbor.cpp",
+            (
+                ("{seq2pos.size() / 3, 3}", "{static_cast<int64_t>(seq2pos.size() / 3), 3}"),
+                ("{seq2pos.size() / 3}", "{static_cast<int64_t>(seq2pos.size() / 3)}"),
+                (
+                    "{seq2feat.size() / feat_channel, feat_channel}",
+                    "{static_cast<int64_t>(seq2feat.size() / feat_channel), static_cast<int64_t>(feat_channel)}",
+                ),
+                ("{grids[i].seq2grid.size(), 9}", "{static_cast<int64_t>(grids[i].seq2grid.size()), 9}"),
+                ("{grids[i].seq2evencorner.size()}", "{static_cast<int64_t>(grids[i].seq2evencorner.size())}"),
+                ("{grids[i].seq2oddcorner.size()}", "{static_cast<int64_t>(grids[i].seq2oddcorner.size())}"),
+                ("{grids[i].downsample_seq.size()}", "{static_cast<int64_t>(grids[i].downsample_seq.size())}"),
+                ("long* nptr", "int64_t* nptr"),
+                ("long* dptr", "int64_t* dptr"),
+                ("data_ptr<long>()", "data_ptr<int64_t>()"),
+            ),
+        ),
+        (kdir / "rasterizer.cpp", (("data_ptr<long>()", "data_ptr<int64_t>()"),)),
+        (kdir / "rasterizer_gpu.cu", (("data_ptr<long>()", "data_ptr<int64_t>()"),)),
+    )
+    return _apply_source_patches(patches)
 
 
 @router.post("/install/{model}")
@@ -780,17 +888,59 @@ async def install_3d_model(model: str):
         if out_rc is not None:
             out_rc.append(rc)
 
+    async def _verify_imports(
+        py_exe: Path, repo: Path, required: list[str], optional: list[str] | tuple[str, ...] = ()
+    ) -> tuple[bool, str]:
+        """Run a real import check inside the worker venv before writing .install_complete."""
+        import json as _j
+        paths = [str(repo)]
+        for sub in ("hy3dshape", "hy3dpaint"):
+            if (repo / sub).is_dir():
+                paths.append(str(repo / sub))
+        stub_bpy_snippet = (
+            "try:\n  import bpy\nexcept ImportError:\n  sys.modules['bpy'] = types.ModuleType('bpy')\n"
+            if (repo / "hy3dpaint").is_dir()
+            else ""
+        )
+        script = (
+            "import importlib, sys, types\n"
+            f"sys.path = {_j.dumps(paths)} + sys.path\n"
+            + stub_bpy_snippet
+            + "missing = []\n"
+            f"req = {_j.dumps(list(required))}\n"
+            f"opt = {_j.dumps(list(optional))}\n"
+            "for m in req:\n"
+            "  try:\n    importlib.import_module(m); print('VERIFIED:', m)\n"
+            "  except Exception as e:\n    print('MISSING REQUIRED:', m, '->', e); missing.append(f'{m} ({e})')\n"
+            "for m in opt:\n"
+            "  try:\n    importlib.import_module(m); print('OPTIONAL OK:', m)\n"
+            "  except Exception as e:\n    print('OPTIONAL MISSING:', m, '->', e)\n"
+            "sys.exit(1 if missing else 0)"
+        )
+        proc = await asyncio.create_subprocess_exec(
+            str(py_exe), "-c", script,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        lines: list[str] = []
+        async for raw in proc.stdout:
+            ln = raw.decode("utf-8", errors="replace").rstrip()
+            if ln:
+                lines.append(ln)
+        rc = await proc.wait()
+        return rc == 0, "\n".join(lines)
+
     async def _generate():
         try:
-            # 1. Clean previous attempts
-            if wrapper_dir.exists() and not install_file.exists():
-                yield _sse("Cleaning partial installation...")
-                if repo_dir.exists():
-                    await asyncio.to_thread(shutil.rmtree, repo_dir, True)
-                wrapper_dir.mkdir(parents=True, exist_ok=True)
+            # Remove any stale completion marker so a failed repair never leaves it valid
+            install_file.unlink(missing_ok=True)
 
+            # 1. Force-clean repo_dir (clearing Windows read-only .git pack files)
             if repo_dir.exists():
-                await asyncio.to_thread(shutil.rmtree, repo_dir, True)
+                yield _sse(f"Cleaning previous {model} source directory...")
+                await asyncio.to_thread(_rmtree_force, repo_dir)
+            wrapper_dir.mkdir(parents=True, exist_ok=True)
 
             # 2. Setup Virtual Environment
             yield _sse(f"Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...")
@@ -816,12 +966,16 @@ async def install_3d_model(model: str):
                     "scipy", "numpy<2.0", "scikit-image",
                 ]
                 yield _sse("Installing TripoSR dependencies (torch 2.6 cu124, numpy < 2.0, scikit-image)...")
+                tsr_pip_rc: list[int] = []
                 async for chunk in _run_and_stream([
                     str(pip_exe), "install", *triposr_reqs,
                     "--index-url", "https://download.pytorch.org/whl/cu124",
                     "--extra-index-url", "https://pypi.org/simple",
-                ]):
+                ], out_rc=tsr_pip_rc):
                     yield chunk
+                if not tsr_pip_rc or tsr_pip_rc[0] != 0:
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TripoSR dependency installation failed'})}\n\n"
+                    return
 
                 yield _sse("Building torchmcubes (marching cubes CUDA ext) — needs MSVC, may take 3-5 min...")
                 mc_env, mc_note = await asyncio.to_thread(_msvc_build_env)
@@ -848,8 +1002,15 @@ async def install_3d_model(model: str):
                     out_rc=tsr_rc,
                 ):
                     yield chunk
-                if not tsr_rc or tsr_rc[0] != 0:
-                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TripoSR git clone failed'})}\n\n"
+                if not tsr_rc or tsr_rc[0] != 0 or not (repo_dir / "tsr").is_dir():
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TripoSR git clone failed or tsr/ package missing'})}\n\n"
+                    return
+
+                ok, verify_log = await _verify_imports(py_exe, repo_dir, ["torch", "tsr.system", "trimesh"])
+                for ln in verify_log.splitlines():
+                    yield _sse(ln)
+                if not ok:
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TripoSR post-install import verification failed'})}\n\n"
                     return
 
                 yield _sse("Generating TripoSR FastAPI microservice hook (run_server.py)...")
@@ -866,29 +1027,36 @@ async def install_3d_model(model: str):
                     out_rc=hy_rc,
                 ):
                     yield chunk
-                if not hy_rc or hy_rc[0] != 0:
-                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Hunyuan3D git clone failed'})}\n\n"
+                if not hy_rc or hy_rc[0] != 0 or not (repo_dir / "hy3dshape").is_dir():
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Hunyuan3D git clone failed or hy3dshape/ missing'})}\n\n"
                     return
 
-                yield _sse("Installing PyTorch 2.5.1 CUDA 12.4 + core dependencies...")
+                yield _sse("Installing PyTorch 2.5.1 CUDA 12.4 + Windows-clean Hunyuan3D dependencies...")
                 hy_reqs = [
                     "torch==2.5.1", "torchvision==0.20.1", "torchaudio==2.5.1",
-                    "wheel", "ninja", "fastapi", "uvicorn", "httpx",
-                    "huggingface_hub[cli]", "hf_transfer", "trimesh", "rembg",
-                    "onnxruntime-gpu", "psutil",
+                    "wheel", "ninja", "setuptools", "pybind11==2.13.4",
+                    "fastapi", "uvicorn", "httpx",
+                    "huggingface-hub>=0.30.0", "hf_transfer",
+                    "diffusers==0.30.0", "transformers==4.46.0", "accelerate==1.1.1",
+                    "pytorch-lightning==1.9.5", "safetensors>=0.4.4",
+                    "numpy<2.0", "scipy", "einops>=0.8.0",
+                    "opencv-python-headless", "imageio", "scikit-image",
+                    "rembg", "onnxruntime-gpu",
+                    "realesrgan==0.3.0", "basicsr==1.4.2",
+                    "trimesh>=4.4.7", "pymeshlab", "pygltflib", "xatlas",
+                    "omegaconf==2.3.0", "pyyaml", "configargparse",
+                    "tqdm", "psutil", "timm", "torchdiffeq", "torchmetrics", "pydantic",
                 ]
+                hy_pip_rc: list[int] = []
                 async for chunk in _run_and_stream([
                     str(pip_exe), "install", *hy_reqs,
                     "--index-url", "https://download.pytorch.org/whl/cu124",
                     "--extra-index-url", "https://pypi.org/simple",
-                ]):
+                ], out_rc=hy_pip_rc):
                     yield chunk
-
-                req_txt = repo_dir / "requirements.txt"
-                if req_txt.exists():
-                    yield _sse("Installing Hunyuan3D-2.1 requirements.txt dependencies...")
-                    async for chunk in _run_and_stream([str(pip_exe), "install", "-r", str(req_txt)]):
-                        yield chunk
+                if not hy_pip_rc or hy_pip_rc[0] != 0:
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Hunyuan3D dependency installation failed'})}\n\n"
+                    return
 
                 yield _sse("Configuring MSVC toolchain for Hunyuan3D PBR paint extensions...")
                 hy_env, hy_note = await asyncio.to_thread(_msvc_build_env)
@@ -897,23 +1065,44 @@ async def install_3d_model(model: str):
                 if _relax_torch_cuda_check(venv_dir):
                     yield _sse("PyTorch CUDA version check relaxed for cross-version build.")
 
-                for ext_rel, label in (
-                    ("hy3dpaint/custom_rasterizer", "custom_rasterizer"),
-                    ("hy3dpaint/DifferentiableRenderer", "DifferentiableRenderer"),
-                ):
-                    ext_dir = repo_dir / ext_rel
-                    if ext_dir.exists():
-                        yield _sse(f"Building {label} CUDA/C++ extension...")
-                        ext_rc: list[int] = []
-                        async for chunk in _run_and_stream(
-                            [str(pip_exe), "install", "--no-build-isolation", "-e", "."],
-                            env=hy_env, cwd=ext_dir, out_rc=ext_rc,
-                        ):
-                            yield chunk
-                        if not ext_rc or ext_rc[0] != 0:
-                            yield _sse(f"Warning: {label} build failed — PBR painting will be unavailable (shape generation still works).")
-                        else:
-                            yield _sse(f"{label} installed successfully.")
+                cr_dir = repo_dir / "hy3dpaint" / "custom_rasterizer"
+                if cr_dir.exists():
+                    if _patch_custom_rasterizer_msvc(cr_dir):
+                        yield _sse("Patched custom_rasterizer C++/CUDA sources for MSVC Win64 compatibility.")
+                    yield _sse("Building custom_rasterizer CUDA/C++ extension...")
+                    cr_rc: list[int] = []
+                    async for chunk in _run_and_stream(
+                        [str(pip_exe), "install", "--no-build-isolation", "-e", "."],
+                        env=hy_env, cwd=cr_dir, out_rc=cr_rc,
+                    ):
+                        yield chunk
+                    if not cr_rc or cr_rc[0] != 0:
+                        yield _sse("Warning: custom_rasterizer build failed — PBR painting will be unavailable (shape generation still works).")
+                    else:
+                        yield _sse("custom_rasterizer installed successfully.")
+
+                dr_dir = repo_dir / "hy3dpaint" / "DifferentiableRenderer"
+                if (dr_dir / "mesh_inpaint_processor.cpp").exists():
+                    yield _sse("Building mesh_inpaint_processor C++ extension...")
+                    build_mip_script = (
+                        "import sys, pybind11; "
+                        "from setuptools import setup, Extension; "
+                        "cflags = ['/O2', '/EHsc'] if sys.platform == 'win32' else ['-O3', '-std=c++11', '-fPIC']; "
+                        "setup(name='mesh_inpaint_processor', "
+                        "ext_modules=[Extension('mesh_inpaint_processor', ['mesh_inpaint_processor.cpp'], "
+                        "include_dirs=[pybind11.get_include()], extra_compile_args=cflags, language='c++')], "
+                        "script_args=['build_ext', '--inplace'])"
+                    )
+                    dr_rc: list[int] = []
+                    async for chunk in _run_and_stream(
+                        [str(py_exe), "-c", build_mip_script],
+                        env=hy_env, cwd=dr_dir, out_rc=dr_rc,
+                    ):
+                        yield chunk
+                    if not dr_rc or dr_rc[0] != 0:
+                        yield _sse("Warning: mesh_inpaint_processor build failed — fast C++ texture inpainting will be unavailable.")
+                    else:
+                        yield _sse("mesh_inpaint_processor built successfully.")
 
                 ckpt_dir = repo_dir / "hy3dpaint" / "ckpt"
                 ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -930,6 +1119,17 @@ async def install_3d_model(model: str):
                     if not dl_rc or dl_rc[0] != 0:
                         yield _sse("Warning: RealESRGAN_x4plus.pth download failed — PBR texture upscaling may retry at runtime.")
 
+                ok, verify_log = await _verify_imports(
+                    py_exe, repo_dir,
+                    ["torch", "diffusers", "transformers", "accelerate", "hy3dshape.pipelines"],
+                    ["custom_rasterizer", "DifferentiableRenderer.mesh_inpaint_processor", "textureGenPipeline"],
+                )
+                for ln in verify_log.splitlines():
+                    yield _sse(ln)
+                if not ok:
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Hunyuan3D post-install import verification failed'})}\n\n"
+                    return
+
                 yield _sse("Generating Hunyuan3D 2.1 FastAPI microservice hook (run_server.py)...")
                 run_script.write_text((Path(__file__).parent / "templates" / "hunyuan3d_server.py").read_text(encoding="utf-8"), encoding="utf-8")
                 install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding="utf-8")
@@ -937,76 +1137,134 @@ async def install_3d_model(model: str):
                 return
 
             # Upgraded TRELLIS.2-4B install path
-            if repo_dir.exists() and (repo_dir / ".git").exists():
-                yield _sse("Existing TRELLIS.2 repository found. Syncing...")
-                git_rc: list[int] = []
-                async for chunk in _run_and_stream(["git", "pull"], cwd=repo_dir, out_rc=git_rc):
-                    yield chunk
-            else:
-                if repo_dir.exists():
-                    await asyncio.to_thread(shutil.rmtree, repo_dir, True)
-                yield _sse(f"Cloning microsoft/TRELLIS.2 (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...")
-                git_rc = []
-                async for chunk in _run_and_stream(
-                    ["git", "clone", "--recurse-submodules", "https://github.com/microsoft/TRELLIS.2.git", str(repo_dir)],
-                    out_rc=git_rc,
-                ):
-                    yield chunk
+            yield _sse(f"Cloning microsoft/TRELLIS.2 (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...")
+            git_rc: list[int] = []
+            async for chunk in _run_and_stream(
+                ["git", "clone", "-b", "main", "--recursive", "https://github.com/microsoft/TRELLIS.2.git", str(repo_dir)],
+                out_rc=git_rc,
+            ):
+                yield chunk
 
-            if not git_rc or git_rc[0] != 0:
-                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TRELLIS.2 git clone failed'})}\n\n"
+            if not git_rc or git_rc[0] != 0 or not (repo_dir / "trellis2").is_dir():
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TRELLIS.2 git clone failed or trellis2/ package missing'})}\n\n"
                 return
 
             yield _sse("Installing TRELLIS.2 high-performance CUDA 12.4 core stack...")
             core_reqs = [
                 "torch==2.6.0", "torchvision==0.21.0", "torchaudio==2.6.0",
-                "wheel", "ninja", "easydict", "scipy", "tqdm",
+                "wheel", "ninja", "setuptools", "pybind11", "easydict", "scipy", "tqdm",
                 "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow",
                 "imageio", "imageio-ffmpeg", "opencv-python-headless", "rembg", "onnxruntime-gpu",
                 "trimesh", "transformers", "timm", "einops", "kornia", "psutil", "plyfile",
-                "xatlas", "pymeshfix", "igraph", "spconv-cu124",
+                "xatlas", "pymeshfix", "igraph", "spconv-cu124", "zstandard", "pydantic",
             ]
+            if sys.platform == "win32":
+                core_reqs.append("triton-windows>=3.2.0,<3.3")
+
+            core_rc: list[int] = []
             async for chunk in _run_and_stream([
                 str(pip_exe), "install", *core_reqs,
                 "--index-url", "https://download.pytorch.org/whl/cu124",
                 "--extra-index-url", "https://pypi.org/simple",
-            ]):
+            ], out_rc=core_rc):
                 yield chunk
+            if not core_rc or core_rc[0] != 0:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TRELLIS.2 core dependency installation failed'})}\n\n"
+                return
+
+            yield _sse("Installing xformers 0.0.29.post3 (CUDA 12.4 sparse attention backend)...")
+            xf_rc: list[int] = []
+            async for chunk in _run_and_stream([
+                str(pip_exe), "install", "xformers==0.0.29.post3",
+                "--no-deps", "--index-url", "https://download.pytorch.org/whl/cu124",
+            ], out_rc=xf_rc):
+                yield chunk
+            xformers_ok = bool(xf_rc and xf_rc[0] == 0)
+            if not xformers_ok:
+                yield _sse("Warning: xformers==0.0.29.post3 wheel install failed; sparse attention will need flash_attn or xformers.")
 
             yield _sse("Installing specialized 3D utility repository (utils3d)...")
+            u3d_rc: list[int] = []
             async for chunk in _run_and_stream([
                 str(pip_exe), "install",
                 "git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8",
-            ]):
+            ], out_rc=u3d_rc):
                 yield chunk
+            if not u3d_rc or u3d_rc[0] != 0:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'utils3d installation failed'})}\n\n"
+                return
 
-            yield _sse("Configuring MSVC environment for TRELLIS.2 CUDA extensions (nvdiffrast, o-voxel, cumesh, flex_gemm)...")
+            yield _sse("Configuring MSVC environment for TRELLIS.2 CUDA extensions (nvdiffrast, CuMesh, FlexGEMM, o-voxel)...")
             nv_env, nv_note = await asyncio.to_thread(_msvc_build_env)
             if nv_note:
                 yield _sse(nv_note)
             if _relax_torch_cuda_check(venv_dir):
                 yield _sse("PyTorch CUDA version check relaxed for cross-version build.")
 
-            ext_specs = [
-                ("nvdiffrast", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/NVlabs/nvdiffrast"], None),
-                ("cumesh", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/JeffreyXiang/CuMesh.git"], None),
-                ("flex_gemm", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/JeffreyXiang/FlexGEMM.git"], None),
-            ]
-            ovoxel_dir = repo_dir / "o-voxel"
-            if ovoxel_dir.exists():
-                ext_specs.append(("o-voxel", [str(pip_exe), "install", "--no-build-isolation", "."], ovoxel_dir))
-            else:
-                ext_specs.append(("o-voxel", [str(pip_exe), "install", "--no-build-isolation", "o-voxel"], None))
-
-            for label, cmd, cwd_dir in ext_specs:
-                yield _sse(f"Building/installing {label}...")
-                ext_rc = []
-                async for chunk in _run_and_stream(cmd, env=nv_env, cwd=cwd_dir, out_rc=ext_rc):
+            build_tmp = wrapper_dir / "_build_ext"
+            await asyncio.to_thread(_rmtree_force, build_tmp)
+            build_tmp.mkdir(parents=True, exist_ok=True)
+            try:
+                cumesh_dir = build_tmp / "CuMesh"
+                flex_dir = build_tmp / "FlexGEMM"
+                yield _sse("Cloning CuMesh (--recursive)...")
+                cm_rc: list[int] = []
+                async for chunk in _run_and_stream(
+                    ["git", "clone", "--recursive", "https://github.com/JeffreyXiang/CuMesh.git", str(cumesh_dir)],
+                    out_rc=cm_rc,
+                ):
                     yield chunk
-                if not ext_rc or ext_rc[0] != 0:
-                    yield _sse(f"Warning: {label} build failed — some advanced PBR/remeshing features may fall back.")
-                else:
-                    yield _sse(f"{label} installed successfully.")
+
+                yield _sse("Cloning FlexGEMM (--recursive)...")
+                fg_rc: list[int] = []
+                async for chunk in _run_and_stream(
+                    ["git", "clone", "--recursive", "https://github.com/JeffreyXiang/FlexGEMM.git", str(flex_dir)],
+                    out_rc=fg_rc,
+                ):
+                    yield chunk
+
+                ext_specs: list[tuple[str, list[str], Path | None, bool]] = [
+                    ("nvdiffrast", [str(pip_exe), "install", "--no-build-isolation", "git+https://github.com/NVlabs/nvdiffrast"], None, True),
+                    ("CuMesh", [str(pip_exe), "install", "--no-build-isolation", "."], cumesh_dir, True),
+                    ("FlexGEMM", [str(pip_exe), "install", "--no-build-isolation", "."], flex_dir, True),
+                ]
+                ovoxel_dir = repo_dir / "o-voxel"
+                if ovoxel_dir.is_dir():
+                    if _patch_ovoxel_msvc(ovoxel_dir):
+                        yield _sse("Patched o-voxel C++ float literal suffixes for MSVC compatibility.")
+                    ext_specs.append(("o-voxel", [str(pip_exe), "install", "--no-build-isolation", "--no-deps", "."], ovoxel_dir, True))
+
+                for label, cmd, cwd_dir, required in ext_specs:
+                    if cwd_dir is not None and not cwd_dir.is_dir():
+                        yield f"data: {json.dumps({'done': True, 'success': False, 'error': f'{label} source directory missing after clone'})}\n\n"
+                        return
+                    yield _sse(f"Building/installing {label}...")
+                    ext_rc: list[int] = []
+                    async for chunk in _run_and_stream(cmd, env=nv_env, cwd=cwd_dir, out_rc=ext_rc):
+                        yield chunk
+                    if not ext_rc or ext_rc[0] != 0:
+                        msg = f"{label} CUDA extension build failed (check MSVC/CUDA compiler log above)."
+                        if required:
+                            yield f"data: {json.dumps({'done': True, 'success': False, 'error': msg})}\n\n"
+                            return
+                        yield _sse(f"Warning: {msg}")
+                    else:
+                        yield _sse(f"{label} installed successfully.")
+            finally:
+                await asyncio.to_thread(_rmtree_force, build_tmp)
+
+            req_mods = ["torch", "trellis2.pipelines", "o_voxel", "cumesh", "flex_gemm", "nvdiffrast", "trimesh", "transformers"]
+            opt_mods = []
+            if xformers_ok:
+                req_mods.append("xformers")
+            else:
+                opt_mods.append("xformers")
+            ok, verify_log = await _verify_imports(py_exe, repo_dir, req_mods, opt_mods)
+            for ln in verify_log.splitlines():
+                yield _sse(ln)
+            if not ok:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TRELLIS.2 post-install import verification failed'})}\n\n"
+                return
 
             yield _sse("Generating TRELLIS.2-4B FastAPI microservice hook (run_server.py)...")
             server_template = (Path(__file__).parent / "templates" / "trellis2_server.py").read_text(encoding="utf-8")

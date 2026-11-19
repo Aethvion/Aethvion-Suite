@@ -15,7 +15,12 @@ from typing import List, Optional
 os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 os.environ.setdefault("ATTN_BACKEND", "sdpa")
-os.environ.setdefault("SPARSE_ATTN_BACKEND", "sdpa")
+if "SPARSE_ATTN_BACKEND" not in os.environ:
+    try:
+        import xformers  # noqa: F401
+        os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
+    except Exception:
+        os.environ["SPARSE_ATTN_BACKEND"] = "flash_attn"
 
 # Prevent transformers from crashing on Windows when flash_attn is absent
 try:
@@ -125,10 +130,18 @@ def _load():
         _pipeline = pipeline
         _status = "online"
         print("[trellis-2] STATUS: online")
-    except Exception:
-        _load_error = traceback.format_exc()
+    except Exception as exc:
+        tb = traceback.format_exc()
+        msg = f"{exc}\n{tb}".lower()
+        if any(k in msg for k in ("gatedrepoerror", "gated repo", "401 client error", "403 client error", "cannot access gated repo")):
+            _load_error = (
+                "Hugging Face authentication required for gated dependency (e.g. facebook/dinov3-vitl16-pretrain-lvd1689m or briaai/RMBG-2.0). "
+                "Accept the repository terms on Hugging Face, then run `huggingface-cli login` or set the HF_TOKEN environment variable and restart Aethvion Suite."
+            )
+        else:
+            _load_error = tb
         _status = "failed"
-        print(f"[trellis-2] LOAD FAILED:\n{_load_error}")
+        print(f"[trellis-2] LOAD FAILED:\n{tb}")
 
 
 @asynccontextmanager

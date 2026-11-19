@@ -143,16 +143,29 @@
         },
 
         async handleRepair(modelId) {
-            if (!confirm(`This will wipe the current ${modelId} deployment and re-initialize the environment. Weights will be preserved. Proceed?`)) return;
+            if (!confirm(`This will wipe the current ${modelId} deployment and re-initialize the environment. Weights will be preserved if already valid. Proceed?`)) return;
 
             const mid = modelId.replace('-', '');
             const fixContainer = document.getElementById(`${mid}-fix-container`);
             if (fixContainer) fixContainer.style.display = 'none';
 
+            let skipWeights = false;
             try {
                 await fetch(`/api/3d/stop/${modelId}`, { method: 'POST' });
-                await this.handleUnifiedInstall(modelId);
-                window.showToast(`${modelId} repair complete.`, 'success');
+                const stRes = await fetch(`/api/3d/install_status/${modelId}?t=${Date.now()}`);
+                if (stRes.ok) {
+                    const st = await stRes.json();
+                    const expectedRepos = {
+                        'trellis-2': 'microsoft/TRELLIS.2-4B',
+                        'hunyuan3d': 'tencent/Hunyuan3D-2.1',
+                        'triposr': 'stabilityai/TripoSR',
+                    };
+                    if (st.weights_installed && (!st.weights_repo || st.weights_repo === expectedRepos[modelId])) {
+                        skipWeights = true;
+                    }
+                }
+                const ok = await this.handleUnifiedInstall(modelId, { skipWeightsIfPresent: skipWeights });
+                if (ok) window.showToast(`${modelId} repair complete.`, 'success');
             } catch (e) {
                 window.showToast(`Repair failed: ${e.message}`, 'error');
                 if (fixContainer) fixContainer.style.display = 'block';
@@ -241,25 +254,62 @@
             this.pollIntervals[modelId] = setInterval(check, 3000);
         },
 
-        async handleUnifiedInstall(modelId) {
+        _markInstallFailed(modelId, phase, errMsg) {
+            const mid = modelId.replace('-', '');
+            const logElement = document.getElementById(`${mid}-install-log`);
+            const bar = document.getElementById(`${phase === 'weights' ? 'weights' : 'engine'}-bar-${mid}`);
+            const text = document.getElementById(`${phase === 'weights' ? 'weights' : 'engine'}-text-${mid}`);
+            const btnFull = document.getElementById(`btn-install-full-${mid}`);
+            const fixContainer = document.getElementById(`${mid}-fix-container`);
+            if (bar) bar.style.background = '#f87171';
+            if (text) {
+                text.style.color = '#f87171';
+                text.textContent = `${phase === 'weights' ? '2. Model Weights' : '1. Environment & Core Files'} (Failed — see log below)`;
+            }
+            if (logElement) {
+                logElement.textContent += `\n[ERROR] ${errMsg}\n`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            if (btnFull) btnFull.style.display = 'block';
+            if (fixContainer) fixContainer.style.display = 'block';
+        },
+
+        async handleUnifiedInstall(modelId, opts = {}) {
             const mid = modelId.replace('-', '');
             const btnFull = document.getElementById(`btn-install-full-${mid}`);
             const progressContainer = document.getElementById(`${mid}-install-progress-container`);
             const logContainer = document.getElementById(`${mid}-install-log-container`);
             const logElement = document.getElementById(`${mid}-install-log`);
+            const engineBar = document.getElementById(`engine-bar-${mid}`);
+            const weightsBar = document.getElementById(`weights-bar-${mid}`);
 
             if (btnFull) btnFull.style.display = 'none';
             if (progressContainer) progressContainer.style.display = 'block';
             if (logContainer) logContainer.style.display = 'block';
             if (logElement) logElement.textContent = `[System] Initiating ${modelId} Deployment...\n`;
+            if (engineBar) { engineBar.style.width = '0%'; engineBar.style.background = ''; }
+            if (weightsBar) { weightsBar.style.width = '0%'; weightsBar.style.background = ''; }
 
             try {
                 const phase1Success = await this.installModelPhase(modelId);
-                if (!phase1Success) return;
-                await this.installWeightsPhase(modelId);
+                if (!phase1Success) return false;
+                if (opts.skipWeightsIfPresent) {
+                    const wText = document.getElementById(`weights-text-${mid}`);
+                    const wPercent = document.getElementById(`weights-percent-${mid}`);
+                    const wWrap = document.getElementById(`progress-weights-${mid}`);
+                    if (wWrap) wWrap.style.opacity = '1';
+                    if (weightsBar) weightsBar.style.width = '100%';
+                    if (wPercent) wPercent.textContent = '100%';
+                    if (wText) wText.textContent = '2. Model Weights (Preserved)';
+                    if (logElement) logElement.textContent += '[System] Existing model weights preserved.\n';
+                    window.showToast(`${modelId} is ready!`, 'success');
+                    setTimeout(() => { this.checkInstallStatus(modelId); }, 1000);
+                    return true;
+                }
+                return await this.installWeightsPhase(modelId);
             } catch (e) {
                 window.showToast(`${modelId} setup failed: ${e.message}`, 'error');
-                if (btnFull) btnFull.style.display = 'block';
+                return false;
             }
         },
 
@@ -270,13 +320,15 @@
             const percent = document.getElementById(`engine-percent-${mid}`);
             const text = document.getElementById(`engine-text-${mid}`);
 
-            if (text) text.textContent = '1. Environment & Core Files (Active)';
+            if (text) { text.style.color = ''; text.textContent = '1. Environment & Core Files (Active)'; }
 
             try {
                 const res = await fetch(`/api/3d/install/${modelId}`, { method: 'POST' });
+                if (!res.ok) throw new Error(`Install endpoint returned HTTP ${res.status}`);
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = '';
+                let sawDone = false;
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -295,9 +347,11 @@
                             logElement.scrollTop = logElement.scrollHeight;
 
                             if (msg.line.includes('environment')) { bar.style.width = '30%'; percent.textContent = '30%'; }
-                            if (msg.line.includes('repository')) { bar.style.width = '50%'; percent.textContent = '50%'; }
-                            if (msg.line.includes('dependencies')) { bar.style.width = '75%'; percent.textContent = '75%'; }
-                        } else if (msg.done) {
+                            if (msg.line.includes('Cloning') || msg.line.includes('repository')) { bar.style.width = '50%'; percent.textContent = '50%'; }
+                            if (msg.line.includes('Installing') || msg.line.includes('dependencies') || msg.line.includes('Building')) { bar.style.width = '75%'; percent.textContent = '75%'; }
+                        }
+                        if (msg.done) {
+                            sawDone = true;
                             if (msg.success) {
                                 if (bar) bar.style.width = '100%';
                                 if (percent) percent.textContent = '100%';
@@ -309,7 +363,11 @@
                         }
                     }
                 }
-            } catch (e) { throw e; }
+                if (!sawDone) throw new Error('Install stream ended unexpectedly before completion.');
+            } catch (e) {
+                this._markInstallFailed(modelId, 'engine', e.message);
+                throw e;
+            }
         },
 
         async installWeightsPhase(modelId) {
@@ -321,13 +379,15 @@
             const weightContainer = document.getElementById(`progress-weights-${mid}`);
 
             if (weightContainer) weightContainer.style.opacity = '1';
-            if (text) text.textContent = '2. Model Weights (Active)';
+            if (text) { text.style.color = ''; text.textContent = '2. Model Weights (Active)'; }
 
             try {
                 const response = await fetch(`/api/3d/install_weights/${modelId}`, { method: 'POST' });
+                if (!response.ok) throw new Error(`Weights endpoint returned HTTP ${response.status}`);
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = "";
+                let sawDone = false;
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -337,47 +397,55 @@
                     buffer = parts.pop();
 
                     for (const part of parts) {
-                        if (part.startsWith('data: ')) {
-                            try {
-                                const json = JSON.parse(part.substring(6));
-                                if (json.line) {
-                                    if (json.line.includes('\r')) {
-                                        const lines = logElement.textContent.split('\n');
-                                        lines[lines.length - 1] = json.line.split('\r').pop();
-                                        logElement.textContent = lines.join('\n');
-                                    } else {
-                                        logElement.textContent += json.line + '\n';
-                                    }
-                                    logElement.scrollTop = logElement.scrollHeight;
+                        if (!part.startsWith('data: ')) continue;
+                        let json;
+                        try {
+                            json = JSON.parse(part.substring(6));
+                        } catch {
+                            continue;
+                        }
+                        if (json.line) {
+                            if (json.line.includes('\r')) {
+                                const lines = logElement.textContent.split('\n');
+                                lines[lines.length - 1] = json.line.split('\r').pop();
+                                logElement.textContent = lines.join('\n');
+                            } else {
+                                logElement.textContent += json.line + '\n';
+                            }
+                            logElement.scrollTop = logElement.scrollHeight;
 
-                                    const matches = json.line.match(/(\d+)%/g);
-                                    if (matches && bar && percent) {
-                                        const p = matches[matches.length - 1].replace('%', '') + '%';
-                                        bar.style.width = p;
-                                        percent.textContent = p;
-                                    }
-                                }
-                                if (json.done) {
-                                    if (json.success) {
-                                        if (bar) bar.style.width = '100%';
-                                        if (percent) percent.textContent = '100%';
-                                        if (text) text.textContent = '2. Model Weights (Ready)';
+                            const matches = json.line.match(/(\d+)%/g);
+                            if (matches && bar && percent) {
+                                const p = matches[matches.length - 1].replace('%', '') + '%';
+                                bar.style.width = p;
+                                percent.textContent = p;
+                            }
+                        }
+                        if (json.done) {
+                            sawDone = true;
+                            if (json.success) {
+                                if (bar) bar.style.width = '100%';
+                                if (percent) percent.textContent = '100%';
+                                if (text) text.textContent = '2. Model Weights (Ready)';
 
-                                        setTimeout(() => {
-                                            document.getElementById(`${mid}-install-progress-container`).style.display = 'none';
-                                            document.getElementById(`${mid}-install-log-container`).style.display = 'none';
-                                            window.showToast(`${modelId} is ready!`, 'success');
-                                            this.checkInstallStatus(modelId);
-                                        }, 1500);
-                                    } else {
-                                        throw new Error(json.error || 'Weight download failed');
-                                    }
-                                }
-                            } catch (e) { }
+                                setTimeout(() => {
+                                    document.getElementById(`${mid}-install-progress-container`).style.display = 'none';
+                                    document.getElementById(`${mid}-install-log-container`).style.display = 'none';
+                                    window.showToast(`${modelId} is ready!`, 'success');
+                                    this.checkInstallStatus(modelId);
+                                }, 1500);
+                                return true;
+                            } else {
+                                throw new Error(json.error || 'Weight download failed');
+                            }
                         }
                     }
                 }
-            } catch (e) { throw e; }
+                if (!sawDone) throw new Error('Weight download stream ended unexpectedly.');
+            } catch (e) {
+                this._markInstallFailed(modelId, 'weights', e.message);
+                throw e;
+            }
         },
 
         async handleRunModel(modelId) {

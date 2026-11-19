@@ -6,6 +6,7 @@ import gc
 import io
 import os
 import sys
+import types
 import base64
 import tempfile
 import threading
@@ -37,6 +38,49 @@ _BackgroundRemover = None
 _PaintPipeline = None
 _PaintConfig = None
 _import_error = None
+_HAS_REAL_BPY = False
+
+
+def _obj_to_glb_with_pbr(obj_path: str, glb_path: str, *args, **kwargs) -> bool:
+    """Convert a Hunyuan3D painted OBJ mesh + PBR maps into a binary GLB without Blender."""
+    try:
+        import trimesh
+        from PIL import Image
+
+        mesh = trimesh.load(obj_path, force="mesh", process=False)
+        base = os.path.splitext(obj_path)[0]
+        albedo_path = f"{base}.jpg"
+        metallic_path = f"{base}_metallic.jpg"
+        roughness_path = f"{base}_roughness.jpg"
+        normal_path = f"{base}_normal.jpg"
+
+        albedo_img = Image.open(albedo_path).convert("RGB") if os.path.exists(albedo_path) else None
+        metallic_img = Image.open(metallic_path).convert("L") if os.path.exists(metallic_path) else None
+        roughness_img = Image.open(roughness_path).convert("L") if os.path.exists(roughness_path) else None
+        normal_img = Image.open(normal_path).convert("RGB") if os.path.exists(normal_path) else None
+
+        mr_img = None
+        if metallic_img is not None or roughness_img is not None:
+            ref_size = (metallic_img or roughness_img).size
+            r_chan = roughness_img.resize(ref_size, Image.BILINEAR) if roughness_img is not None else Image.new("L", ref_size, 255)
+            m_chan = metallic_img.resize(ref_size, Image.BILINEAR) if metallic_img is not None else Image.new("L", ref_size, 0)
+            mr_img = Image.merge("RGB", (Image.new("L", ref_size, 0), r_chan, m_chan))
+
+        mat = trimesh.visual.material.PBRMaterial(
+            baseColorTexture=albedo_img,
+            metallicRoughnessTexture=mr_img,
+            normalTexture=normal_img,
+            metallicFactor=1.0 if metallic_img is not None else 0.0,
+            roughnessFactor=1.0 if roughness_img is not None else 0.85,
+        )
+        uv = getattr(getattr(mesh, "visual", None), "uv", None)
+        mesh.visual = trimesh.visual.TextureVisuals(uv=uv, material=mat)
+        mesh.export(glb_path)
+        return os.path.exists(glb_path) and os.path.getsize(glb_path) > 0
+    except Exception as exc:
+        print(f"[hunyuan3d] OBJ->GLB PBR conversion failed: {exc}")
+        return False
+
 
 try:
     from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline as _SP
@@ -47,9 +91,21 @@ try:
     except Exception:
         pass
     try:
+        try:
+            import bpy  # noqa: F401
+            _HAS_REAL_BPY = True
+        except ImportError:
+            _HAS_REAL_BPY = False
+            sys.modules["bpy"] = types.ModuleType("bpy")
+
         from textureGenPipeline import Hunyuan3DPaintPipeline as _PP, Hunyuan3DPaintConfig as _PC
         _PaintPipeline = _PP
         _PaintConfig = _PC
+        if not _HAS_REAL_BPY:
+            import textureGenPipeline as _tgp_mod
+            import DifferentiableRenderer.mesh_utils as _mu_mod
+            _tgp_mod.convert_obj_to_glb = _obj_to_glb_with_pbr
+            _mu_mod.convert_obj_to_glb = _obj_to_glb_with_pbr
     except Exception as _pe:
         print(f"[hunyuan3d] Paint pipeline unavailable (shape-only mode): {_pe}")
     print("[hunyuan3d] Shape pipeline imported OK")
@@ -189,6 +245,8 @@ def _build_paint_config(max_num_view: int, resolution: int):
     realesrgan_ckpt = os.path.join(_REPO, "hy3dpaint", "ckpt", "RealESRGAN_x4plus.pth")
     mv_cfg = os.path.join(_REPO, "hy3dpaint", "cfgs", "hunyuan-paint-pbr.yaml")
     custom_pipe = os.path.join(_REPO, "hy3dpaint", "hunyuanpaintpbr")
+    if os.path.exists(os.path.join(_WEIGHTS, "hunyuan3d-paintpbr-v2-1")):
+        conf.multiview_pretrained_path = _weights_source()
     if os.path.exists(realesrgan_ckpt):
         conf.realesrgan_ckpt_path = realesrgan_ckpt
     if os.path.exists(mv_cfg):
@@ -227,7 +285,8 @@ async def generate(req: GenRequest):
         with _gpu_lock, tempfile.TemporaryDirectory() as tmpdir:
             ref_path = os.path.join(tmpdir, "ref.png")
             shape_path = os.path.join(tmpdir, "shape.glb")
-            tex_path = os.path.join(tmpdir, "textured.glb")
+            tex_obj_path = os.path.join(tmpdir, "textured.obj")
+            tex_glb_path = tex_obj_path.replace(".obj", ".glb")
             img.save(ref_path)
 
             # Stage 1: Shape generation (~10 GB VRAM)
@@ -269,13 +328,16 @@ async def generate(req: GenRequest):
                         out_path = paint_pipe(
                             mesh_path=shape_path,
                             image_path=ref_path,
-                            output_mesh_path=tex_path,
+                            output_mesh_path=tex_obj_path,
+                            save_glb=True,
                         )
-                        if out_path and os.path.exists(out_path):
-                            final_path = out_path
+                        if not os.path.exists(tex_glb_path) and os.path.exists(tex_obj_path):
+                            _obj_to_glb_with_pbr(tex_obj_path, tex_glb_path)
+                        if os.path.exists(tex_glb_path):
+                            final_path = tex_glb_path
                             textured_ok = True
-                        elif os.path.exists(tex_path):
-                            final_path = tex_path
+                        elif out_path and out_path.endswith(".glb") and os.path.exists(out_path):
+                            final_path = out_path
                             textured_ok = True
                         del paint_pipe
                         _free_cuda()
@@ -326,11 +388,26 @@ async def texture_mesh(req: TextureRequest):
             _move_pipeline(_shape_pipeline, "cpu")
             _free_cuda()
 
-            tex_path = os.path.join(tmpdir, "textured.glb")
+            tex_obj_path = os.path.join(tmpdir, "textured.obj")
+            tex_glb_path = tex_obj_path.replace(".obj", ".glb")
             conf = _build_paint_config(req.max_num_view, req.texture_resolution)
             paint_pipe = _PaintPipeline(conf)
-            out_path = paint_pipe(mesh_path=mesh_path, image_path=ref_path, output_mesh_path=tex_path)
-            final_path = out_path if (out_path and os.path.exists(out_path)) else tex_path
+            out_path = paint_pipe(
+                mesh_path=mesh_path,
+                image_path=ref_path,
+                output_mesh_path=tex_obj_path,
+                save_glb=True,
+            )
+            if not os.path.exists(tex_glb_path) and os.path.exists(tex_obj_path):
+                _obj_to_glb_with_pbr(tex_obj_path, tex_glb_path)
+            if os.path.exists(tex_glb_path):
+                final_path = tex_glb_path
+            elif out_path and out_path.endswith(".glb") and os.path.exists(out_path):
+                final_path = out_path
+            else:
+                del paint_pipe
+                _free_cuda()
+                return {"success": False, "error": "PBR paint pipeline did not produce a GLB output"}
             del paint_pipe
             _free_cuda()
 

@@ -729,3 +729,80 @@ def test_heavy_3d_worker_eviction(monkeypatch):
     # Lightweight TripoSR must not be evicted when switching heavy models
     assert fake_tsr.terminated is False
     assert "triposr" in r._WORKER_PROCESS
+
+
+def test_rmtree_force_deletes_readonly_git_pack_files(tmp_path):
+    import os
+    import stat
+    from core.interfaces.dashboard import three_d_routes as r
+
+    repo_dir = tmp_path / "trellis-2"
+    pack_dir = repo_dir / ".git" / "objects" / "pack"
+    pack_dir.mkdir(parents=True)
+    pack_file = pack_dir / "pack-test.pack"
+    pack_file.write_bytes(b"PACK")
+    os.chmod(pack_file, stat.S_IREAD)
+
+    r._rmtree_force(repo_dir)
+    assert not repo_dir.exists()
+
+
+def test_msvc_build_env_sets_zc_preprocessor(monkeypatch):
+    from core.interfaces.dashboard import three_d_routes as r
+
+    monkeypatch.setattr(r.sys, "platform", "win32")
+    monkeypatch.delenv("CL", raising=False)
+    monkeypatch.delenv("NVCC_PREPEND_FLAGS", raising=False)
+    monkeypatch.setattr(r.os.path, "exists", lambda _p: False)
+
+    env, _ = r._msvc_build_env()
+    assert env["DISTUTILS_USE_SDK"] == "1"
+    assert "/Zc:preprocessor" in env.get("CL", "")
+    assert "/Zc:preprocessor" in env.get("NVCC_PREPEND_FLAGS", "")
+
+
+def test_patch_ovoxel_msvc(tmp_path):
+    from core.interfaces.dashboard import three_d_routes as r
+
+    cpp = tmp_path / "src" / "convert" / "flexible_dual_grid.cpp"
+    cpp.parent.mkdir(parents=True)
+    cpp.write_text("if (x < 1e-6d || y == 0.0d) return;", encoding="utf-8")
+
+    io_dir = tmp_path / "src" / "io"
+    io_dir.mkdir(parents=True)
+    svo = io_dir / "svo.cpp"
+    svo.write_text("from_blob(a, {svo.size()}); from_blob(b, {codes.size()});", encoding="utf-8")
+    fp = io_dir / "filter_parent.cpp"
+    fp.write_text("torch::zeros({N_leaf, C}, torch::kUInt8);", encoding="utf-8")
+    fn = io_dir / "filter_neighbor.cpp"
+    fn.write_text("torch::zeros({N, C}, torch::kUInt8);", encoding="utf-8")
+
+    assert r._patch_ovoxel_msvc(tmp_path) is True
+    assert cpp.read_text(encoding="utf-8") == "if (x < 1e-6 || y == 0.0) return;"
+    assert svo.read_text(encoding="utf-8") == "from_blob(a, {static_cast<int64_t>(svo.size())}); from_blob(b, {static_cast<int64_t>(codes.size())});"
+    assert fp.read_text(encoding="utf-8") == "torch::zeros({static_cast<int64_t>(N_leaf), static_cast<int64_t>(C)}, torch::kUInt8);"
+    assert fn.read_text(encoding="utf-8") == "torch::zeros({static_cast<int64_t>(N), static_cast<int64_t>(C)}, torch::kUInt8);"
+    assert r._patch_ovoxel_msvc(tmp_path) is False
+
+
+def test_patch_custom_rasterizer_msvc(tmp_path):
+    from core.interfaces.dashboard import three_d_routes as r
+
+    kdir = tmp_path / "lib" / "custom_rasterizer_kernel"
+    kdir.mkdir(parents=True)
+    gn = kdir / "grid_neighbor.cpp"
+    gn.write_text(
+        "torch::zeros({seq2pos.size() / 3, 3}, opts); long* nptr = t.data_ptr<long>();",
+        encoding="utf-8",
+    )
+    rs = kdir / "rasterizer.cpp"
+    rs.write_text("(INT64*)z_min.data_ptr<long>();", encoding="utf-8")
+    rs_gpu = kdir / "rasterizer_gpu.cu"
+    rs_gpu.write_text("(INT64*)z_min.data_ptr<long>();", encoding="utf-8")
+
+    assert r._patch_custom_rasterizer_msvc(tmp_path) is True
+    assert "static_cast<int64_t>(seq2pos.size() / 3), 3" in gn.read_text(encoding="utf-8")
+    assert "int64_t* nptr = t.data_ptr<int64_t>();" in gn.read_text(encoding="utf-8")
+    assert "data_ptr<int64_t>()" in rs.read_text(encoding="utf-8")
+    assert "data_ptr<int64_t>()" in rs_gpu.read_text(encoding="utf-8")
+    assert r._patch_custom_rasterizer_msvc(tmp_path) is False
